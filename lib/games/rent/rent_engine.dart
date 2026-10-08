@@ -3,6 +3,7 @@ import 'dart:math';
 import '../../core/game_engine.dart';
 import '../../models/card.dart';
 import 'rent_categories.dart';
+import '../../l10n/tr.dart';
 
 class _RentPlayerInfo {
   final String id;
@@ -82,7 +83,7 @@ class RentEngine extends GameEngine {
   @override
   void addPlayer({required String id, required String name, required bool isHost}) {
     if (_players.length >= maxPlayers) {
-      throw StateError('Camera este plină (maxim $maxPlayers jucători).');
+      throw GameError('err.roomFull', {'max': maxPlayers});
     }
     _players.add(_RentPlayerInfo(id: id, name: name, isHost: isHost));
     notifyListeners();
@@ -106,9 +107,9 @@ class RentEngine extends GameEngine {
 
   @override
   void startGame() {
-    if (started) throw StateError('Jocul e deja în desfășurare.');
+    if (started) throw GameError('err.alreadyStarted');
     if (_players.length != minPlayers) {
-      throw StateError('Sunt necesari exact $minPlayers jucători.');
+      throw GameError('err.playersExact', {'n': minPlayers});
     }
     _usedCategories.clear();
     _chooserIndex = 0;
@@ -169,15 +170,15 @@ class RentEngine extends GameEngine {
         }
         break;
       default:
-        throw StateError('Acțiune necunoscută.');
+        throw GameError('err.unknownAction');
     }
   }
 
   void _chooseCategory(String playerId, String category) {
-    if (!started || !_choosingCategory) throw StateError('Nu este faza de alegere a categoriei.');
-    if (_players[_chooserIndex].id != playerId) throw StateError('Nu este rândul tău să alegi.');
-    if (!kRentCategories.contains(category)) throw StateError('Categorie necunoscută.');
-    if (_usedCategories.contains(category)) throw StateError('Categoria a fost deja jucată.');
+    if (!started || !_choosingCategory) throw GameError('err.rent.notChoosingPhase');
+    if (_players[_chooserIndex].id != playerId) throw GameError('err.rent.notYourChoice');
+    if (!kRentCategories.contains(category)) throw GameError('err.rent.unknownCategory');
+    if (_usedCategories.contains(category)) throw GameError('err.rent.categoryUsed');
     _activeCategory = category;
     _choosingCategory = false;
     _startRound(category);
@@ -189,15 +190,15 @@ class RentEngine extends GameEngine {
   // ---------------------------------------------------------------------
 
   void _playTrickCard(String playerId, PlayingCard card) {
-    if (!started || _choosingCategory) throw StateError('Nu este faza de joc.');
-    if (_turnOrder.isEmpty || _turnOrder[_turnIndex] != playerId) throw StateError('Nu este rândul tău.');
+    if (!started || _choosingCategory) throw GameError('err.notPlayingPhase');
+    if (_turnOrder.isEmpty || _turnOrder[_turnIndex] != playerId) throw GameError('err.notYourTurn');
     final hand = _hands[playerId]!;
-    if (!hand.contains(card)) throw StateError('Nu ai această carte.');
+    if (!hand.contains(card)) throw GameError('err.notYourCard');
     if (_currentTrick.isNotEmpty) {
       final ledSuit = _currentTrick.first.card.suit;
       final hasLedSuit = hand.any((c) => c.suit == ledSuit);
       if (hasLedSuit && card.suit != ledSuit) {
-        throw StateError('Trebuie să joci culoarea cerută dacă o ai.');
+        throw GameError('err.mustFollowSuit');
       }
     }
 
@@ -306,11 +307,11 @@ class RentEngine extends GameEngine {
   }
 
   void _playRentCard(String playerId, PlayingCard card) {
-    if (!started || _choosingCategory) throw StateError('Nu este faza de joc.');
-    if (_turnOrder.isEmpty || _turnOrder[_turnIndex] != playerId) throw StateError('Nu este rândul tău.');
+    if (!started || _choosingCategory) throw GameError('err.notPlayingPhase');
+    if (_turnOrder.isEmpty || _turnOrder[_turnIndex] != playerId) throw GameError('err.notYourTurn');
     final hand = _hands[playerId]!;
-    if (!hand.contains(card)) throw StateError('Nu ai această carte.');
-    if (!_isValidRentMove(card)) throw StateError('Mutare invalidă — nu se leagă de nicio secvență deschisă.');
+    if (!hand.contains(card)) throw GameError('err.notYourCard');
+    if (!_isValidRentMove(card)) throw GameError('err.rent.invalidMove');
 
     hand.remove(card);
     final seq = _rentSequences.putIfAbsent(card.suit, () => []);

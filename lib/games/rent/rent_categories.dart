@@ -1,3 +1,5 @@
+import '../../l10n/tr.dart';
+
 /// Cele 6 categorii ale jocului Rent — folosite atât de motor (validare),
 /// cât și de UI (etichete), ca să nu se dubleze lista în două locuri.
 const List<String> kRentCategories = [
@@ -9,11 +11,6 @@ const List<String> kRentCategories = [
   'rent',
 ];
 
-const Map<String, String> kRentCategoryLabels = {
-  'popa_rosu': 'Popa roșu',
-  'dame': 'Dame',
-  'romburi': 'Romburi',
-  'totale': 'Totale',
-  'imperiale': 'Imperiale',
-  'rent': 'Rent',
-};
+/// Numele afișat al categoriei [category], în limba curentă.
+String rentCategoryLabel(String category) =>
+    kRentCategories.contains(category) ? tr('rent.category.$category') : category;

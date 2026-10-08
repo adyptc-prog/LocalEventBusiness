@@ -1,3 +1,5 @@
+import '../l10n/tr.dart';
+
 enum Suit { hearts, diamonds, clubs, spades }
 
 /// Ordinea contează: valoarea numerică a fiecărei cărți (folosită de orice
@@ -22,13 +24,13 @@ extension SuitDisplay on Suit {
   String get label {
     switch (this) {
       case Suit.hearts:
-        return 'Inimă roșie';
+        return tr('card.suit.hearts');
       case Suit.diamonds:
-        return 'Romb';
+        return tr('card.suit.diamonds');
       case Suit.clubs:
-        return 'Trifoi';
+        return tr('card.suit.clubs');
       case Suit.spades:
-        return 'Pică';
+        return tr('card.suit.spades');
     }
   }
 

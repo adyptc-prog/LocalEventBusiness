@@ -5,7 +5,9 @@ import 'package:flutter/material.dart';
 
 import '../network/client_service.dart';
 import '../network/event_server_service.dart';
+import '../widgets/language_button.dart';
 import 'event_menu_screen.dart';
+import '../l10n/tr.dart';
 
 /// Primul pas al unui invitat: conectare la serverul central al
 /// evenimentului curent (auto-discovery pe Android, adresă precompletată pe
@@ -74,7 +76,7 @@ class _EventConnectScreenState extends State<EventConnectScreen> {
       if (!mounted) return;
       setState(() {
         _connecting = false;
-        _error = 'Nu m-am putut conecta: $e';
+        _error = tr('connect.failed', {'error': e});
       });
     }
   }
@@ -99,7 +101,7 @@ class _EventConnectScreenState extends State<EventConnectScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: const Color(0xFF101418),
-      appBar: AppBar(backgroundColor: Colors.black26, title: const Text('Intră la eveniment')),
+      appBar: AppBar(backgroundColor: Colors.black26, title: Text(tr('mainMenu.join.title')), actions: const [LanguageButton()]),
       body: SafeArea(
         child: Padding(
           padding: const EdgeInsets.all(16),
@@ -128,18 +130,18 @@ class _EventConnectScreenState extends State<EventConnectScreen> {
 
   List<Widget> _buildWebSection() {
     return [
-      const Text(
-        'Un browser nu poate găsi serverul automat — dar fiindcă ai deschis această pagină direct de la el, adresa e deja completată mai jos.',
-        style: TextStyle(color: Colors.white54, fontSize: 12),
+      Text(
+        tr('connect.webHint'),
+        style: const TextStyle(color: Colors.white54, fontSize: 12),
       ),
       const SizedBox(height: 8),
       TextField(
         controller: _webAddressController,
         enabled: !_connecting,
         style: const TextStyle(color: Colors.white),
-        decoration: const InputDecoration(
-          hintText: 'ex: 192.168.43.1:45034',
-          hintStyle: TextStyle(color: Colors.white38),
+        decoration: InputDecoration(
+          hintText: tr('connect.webAddressHint'),
+          hintStyle: const TextStyle(color: Colors.white38),
           enabledBorder: UnderlineInputBorder(borderSide: BorderSide(color: Colors.white38)),
         ),
       ),
@@ -148,16 +150,16 @@ class _EventConnectScreenState extends State<EventConnectScreen> {
         onPressed: _connecting ? null : _connectWebAddress,
         child: _connecting
             ? const SizedBox(width: 20, height: 20, child: CircularProgressIndicator(strokeWidth: 2))
-            : const Text('Conectează'),
+            : Text(tr('common.connect')),
       ),
     ];
   }
 
   List<Widget> _buildNativeSection() {
     return [
-      const Text(
-        'Conectează-te la același Wi-Fi sau hotspot ca serverul evenimentului — apare automat aici.',
-        style: TextStyle(color: Colors.white54, fontSize: 12),
+      Text(
+        tr('connect.nativeHint'),
+        style: const TextStyle(color: Colors.white54, fontSize: 12),
       ),
       const SizedBox(height: 8),
       _servers.isEmpty
@@ -166,7 +168,7 @@ class _EventConnectScreenState extends State<EventConnectScreen> {
               child: Center(
                 child: _connecting
                     ? const CircularProgressIndicator()
-                    : const Text('Se caută serverul...', style: TextStyle(color: Colors.white38)),
+                    : Text(tr('connect.searching'), style: const TextStyle(color: Colors.white38)),
               ),
             )
           : Column(
@@ -175,7 +177,7 @@ class _EventConnectScreenState extends State<EventConnectScreen> {
                         child: ListTile(
                           leading: const Icon(Icons.dns),
                           title: Text(server.name),
-                          subtitle: Text('${server.rooms} camere active · ${server.address}'),
+                          subtitle: Text(tr('connect.serverSubtitle', {'n': server.rooms, 'address': server.address})),
                           trailing: _connecting
                               ? const SizedBox(width: 20, height: 20, child: CircularProgressIndicator(strokeWidth: 2))
                               : const Icon(Icons.arrow_forward),
@@ -186,7 +188,7 @@ class _EventConnectScreenState extends State<EventConnectScreen> {
             ),
       const Divider(color: Colors.white24),
       ExpansionTile(
-        title: const Text('Nu găsești serverul? Introdu IP-ul manual', style: TextStyle(color: Colors.white70)),
+        title: Text(tr('connect.manualIp'), style: const TextStyle(color: Colors.white70)),
         collapsedIconColor: Colors.white70,
         iconColor: Colors.white70,
         children: [
@@ -197,16 +199,16 @@ class _EventConnectScreenState extends State<EventConnectScreen> {
                   controller: _manualHostController,
                   enabled: !_connecting,
                   style: const TextStyle(color: Colors.white),
-                  decoration: const InputDecoration(
-                    hintText: 'ex: 192.168.43.1',
-                    hintStyle: TextStyle(color: Colors.white38),
+                  decoration: InputDecoration(
+                    hintText: tr('connect.ipHint'),
+                    hintStyle: const TextStyle(color: Colors.white38),
                   ),
                 ),
               ),
               const SizedBox(width: 8),
               FilledButton(
                 onPressed: _connecting ? null : _connectManualHost,
-                child: const Text('Conectează'),
+                child: Text(tr('common.connect')),
               ),
             ],
           ),

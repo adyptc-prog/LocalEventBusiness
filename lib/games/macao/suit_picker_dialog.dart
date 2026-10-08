@@ -1,13 +1,14 @@
 import 'package:flutter/material.dart';
 
 import '../../models/card.dart';
+import '../../l10n/tr.dart';
 
 Future<Suit?> showSuitPicker(BuildContext context) {
   return showDialog<Suit>(
     context: context,
     barrierDismissible: false,
     builder: (context) => AlertDialog(
-      title: const Text('Alege culoarea cerută'),
+      title: Text(tr('macao.pickSuit')),
       content: Wrap(
         spacing: 12,
         runSpacing: 12,

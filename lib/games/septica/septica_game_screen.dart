@@ -8,6 +8,8 @@ import '../../screens/leaderboard_screen.dart';
 import '../../widgets/hand_widget.dart';
 import '../../widgets/playing_card_widget.dart';
 import 'septica_snapshot.dart';
+import '../../l10n/tr.dart';
+import '../../widgets/language_button.dart';
 
 class SepticaGameScreen extends StatefulWidget {
   final GameSessionArgs args;
@@ -56,12 +58,16 @@ class _SepticaGameScreenState extends State<SepticaGameScreen> {
     if (_winnerDialogShown || _snapshot.started) return;
     _winnerDialogShown = true;
     final isMe = _snapshot.winnerId == _snapshot.viewerId;
-    final title = _snapshot.isDraw ? 'Egalitate!' : (isMe ? 'Ai câștigat! 🎉' : 'Joc terminat');
+    final title = _snapshot.isDraw ? tr('game.draw') : (isMe ? tr('game.youWon') : tr('game.over'));
     final content = _snapshot.isDraw
-        ? 'Ai terminat la egalitate cu ${_snapshot.me.score} puncte.'
+        ? tr('septica.drawResult', {'score': _snapshot.me.score})
         : (isMe
-            ? 'Ai capturat ${_snapshot.me.score} puncte.'
-            : '${_snapshot.winnerName ?? 'Adversarul'} a câștigat cu ${_snapshot.players.firstWhere((p) => p.id == _snapshot.winnerId).score} puncte (tu ai ${_snapshot.me.score}).');
+            ? tr('septica.youCaptured', {'score': _snapshot.me.score})
+            : tr('septica.theyWon', {
+                'name': _snapshot.winnerName ?? tr('war.opponentThe'),
+                'score': _snapshot.players.firstWhere((p) => p.id == _snapshot.winnerId).score,
+                'mine': _snapshot.me.score,
+              }));
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (!mounted) return;
       showDialog(
@@ -78,7 +84,7 @@ class _SepticaGameScreenState extends State<SepticaGameScreen> {
                   ..pop()
                   ..popUntil((route) => route.isFirst);
               },
-              child: const Text('Înapoi la meniu'),
+              child: Text(tr('game.backToMenu')),
             ),
           ],
         ),
@@ -105,8 +111,8 @@ class _SepticaGameScreenState extends State<SepticaGameScreen> {
   Widget build(BuildContext context) {
     final opponents = _snapshot.opponents;
     final title = _snapshot.isMyFightDecision
-        ? 'Luptă! Continui sau renunți?'
-        : (_snapshot.isMyTurn ? 'Rândul tău' : 'Se joacă...');
+        ? tr('septica.fightTitle')
+        : (_snapshot.isMyTurn ? tr('game.yourTurn') : tr('game.playing'));
 
     return Scaffold(
       backgroundColor: const Color(0xFF5A1A22),
@@ -116,7 +122,7 @@ class _SepticaGameScreenState extends State<SepticaGameScreen> {
         actions: [
           IconButton(
             icon: const Icon(Icons.leaderboard),
-            tooltip: 'Clasament și chat',
+            tooltip: tr('lobby.leaderboardAndChat'),
             onPressed: () => Navigator.of(context).push(
               MaterialPageRoute(
                 builder: (context) => LeaderboardScreen(
@@ -131,12 +137,13 @@ class _SepticaGameScreenState extends State<SepticaGameScreen> {
           ),
           IconButton(
             icon: const Icon(Icons.exit_to_app),
-            tooltip: 'Ieși din joc',
+            tooltip: tr('game.leave'),
             onPressed: () {
               widget.args.onLeave();
               Navigator.of(context).popUntil((route) => route.isFirst);
             },
           ),
+          const LanguageButton(),
         ],
       ),
       body: SafeArea(
@@ -170,9 +177,9 @@ class _SepticaGameScreenState extends State<SepticaGameScreen> {
                   Row(children: [
                     if (_snapshot.leaderId == widget.args.myId)
                       const Padding(padding: EdgeInsets.only(right: 4), child: Icon(Icons.shield, size: 14, color: Colors.amberAccent)),
-                    const Text('Tu', style: TextStyle(color: Colors.white70)),
+                    Text(tr('war.you'), style: const TextStyle(color: Colors.white70)),
                   ]),
-                  Text('${_snapshot.me.score} pct', style: const TextStyle(color: Colors.amberAccent, fontWeight: FontWeight.bold)),
+                  Text(tr('leaderboard.points', {'n': _snapshot.me.score}), style: const TextStyle(color: Colors.amberAccent, fontWeight: FontWeight.bold)),
                 ],
               ),
             ),
@@ -188,7 +195,7 @@ class _SepticaGameScreenState extends State<SepticaGameScreen> {
                 child: OutlinedButton(
                   style: OutlinedButton.styleFrom(foregroundColor: Colors.white, side: const BorderSide(color: Colors.white70)),
                   onPressed: _concede,
-                  child: const Text('Renunță — lasă-l pe celălalt să ia cărțile'),
+                  child: Text(tr('septica.concede')),
                 ),
               )
             else
@@ -225,7 +232,7 @@ class _SepticaGameScreenState extends State<SepticaGameScreen> {
             else
               const SizedBox(width: 72, height: 100),
             const SizedBox(height: 4),
-            Text(_snapshot.tableCards.length > 1 ? '${_snapshot.tableCards.length} pe masă' : '',
+            Text(_snapshot.tableCards.length > 1 ? tr('septica.onTable', {'n': _snapshot.tableCards.length}) : '',
                 style: const TextStyle(color: Colors.white54, fontSize: 12)),
           ],
         ),
@@ -238,8 +245,8 @@ class _SepticaGameScreenState extends State<SepticaGameScreen> {
     final challengerName = _nameOf(_snapshot.challengerId);
     final rankLabel = _snapshot.contestedRank?.label ?? '';
     final text = isMine
-        ? '$challengerName a tăiat pe $rankLabel — mai pui o carte, sau renunți?'
-        : '${_nameOf(_snapshot.leaderId)} decide dacă mai continuă lupta pe $rankLabel.';
+        ? tr('septica.fightMine', {'name': challengerName, 'rank': rankLabel})
+        : tr('septica.fightOther', {'name': _nameOf(_snapshot.leaderId), 'rank': rankLabel});
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 16),
       child: Text(text, textAlign: TextAlign.center, style: const TextStyle(color: Colors.amberAccent, fontWeight: FontWeight.bold)),
@@ -249,7 +256,7 @@ class _SepticaGameScreenState extends State<SepticaGameScreen> {
   Widget _buildLastMoveBanner() {
     if (!_snapshot.lastPlayQualified) return const SizedBox.shrink();
     final byMe = _snapshot.lastPlayedById == widget.args.myId;
-    final text = byMe ? 'Ai tăiat!' : '${_nameOf(_snapshot.lastPlayedById)} a tăiat!';
+    final text = byMe ? tr('septica.youCut') : tr('septica.theyCut', {'name': _nameOf(_snapshot.lastPlayedById)});
     return Text(text, style: const TextStyle(color: Colors.amberAccent, fontWeight: FontWeight.bold));
   }
 }
@@ -309,7 +316,7 @@ class _OpponentChip extends StatelessWidget {
           const SizedBox(height: 4),
           const CardBackWidget(width: 30),
           const SizedBox(height: 2),
-          Text('${player.handCount} cărți · ${player.score} pct', style: const TextStyle(color: Colors.white70, fontSize: 11)),
+          Text(tr('septica.opponentStats', {'cards': player.handCount, 'score': player.score}), style: const TextStyle(color: Colors.white70, fontSize: 11)),
         ],
       ),
     );

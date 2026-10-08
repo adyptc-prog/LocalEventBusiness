@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import 'uno_card.dart';
+import '../../l10n/tr.dart';
 
 Color colorFor(UnoColor color) {
   switch (color) {
@@ -20,7 +21,7 @@ Future<UnoColor?> showColorPicker(BuildContext context) {
     context: context,
     barrierDismissible: false,
     builder: (context) => AlertDialog(
-      title: const Text('Alege culoarea cerută'),
+      title: Text(tr('uno.pickColor')),
       content: Wrap(
         spacing: 12,
         runSpacing: 12,

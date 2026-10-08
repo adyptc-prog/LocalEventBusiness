@@ -5,6 +5,8 @@ import 'package:flutter/material.dart';
 import '../core/moderation_log_store.dart';
 import '../network/event_server_runner.dart';
 import '../network/participant_info.dart';
+import '../widgets/language_button.dart';
+import '../l10n/tr.dart';
 
 /// Ecran de organizator: cine e conectat la eveniment, în ce cameră, și
 /// acțiuni de moderare — elimină (deconectare imediată), blochează
@@ -55,8 +57,8 @@ class _ParticipantsScreenState extends State<ParticipantsScreen> {
         title: Text(title),
         content: Text(content),
         actions: [
-          TextButton(onPressed: () => Navigator.of(context).pop(false), child: const Text('Renunță')),
-          TextButton(onPressed: () => Navigator.of(context).pop(true), child: const Text('Da')),
+          TextButton(onPressed: () => Navigator.of(context).pop(false), child: Text(tr('common.cancel'))),
+          TextButton(onPressed: () => Navigator.of(context).pop(true), child: Text(tr('common.yes'))),
         ],
       ),
     );
@@ -64,12 +66,12 @@ class _ParticipantsScreenState extends State<ParticipantsScreen> {
   }
 
   Future<void> _kick(ParticipantInfo p) async {
-    if (!await _confirm('Elimini pe ${p.name}?', 'I se închide conexiunea acum. Se poate alătura din nou mai târziu.')) return;
+    if (!await _confirm(tr('participants.kickTitle', {'name': p.name}), tr('participants.kickBody'))) return;
     EventServerRunner.kick(p.profileId);
   }
 
   Future<void> _block(ParticipantInfo p) async {
-    if (!await _confirm('Blochezi pe ${p.name}?', 'I se închide conexiunea și nu se mai poate alătura până nu-l deblochezi.')) return;
+    if (!await _confirm(tr('participants.blockTitle', {'name': p.name}), tr('participants.blockBody'))) return;
     EventServerRunner.block(p.profileId, p.name);
   }
 
@@ -88,16 +90,16 @@ class _ParticipantsScreenState extends State<ParticipantsScreen> {
     if (text.isEmpty) return;
     EventServerRunner.announce(text);
     _announcementController.clear();
-    ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Anunț trimis în toate camerele.')));
+    ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(tr('participants.announcementSent'))));
   }
 
   String _actionLabel(String action) => switch (action) {
-        'kick' => 'Eliminat',
-        'block' => 'Blocat',
-        'unblock' => 'Deblocat',
-        'mute' => 'Silențiat',
-        'unmute' => 'Silențiere anulată',
-        'announcement' => 'Anunț',
+        'kick' => tr('participants.log.kick'),
+        'block' => tr('participants.log.block'),
+        'unblock' => tr('participants.log.unblock'),
+        'mute' => tr('participants.log.mute'),
+        'unmute' => tr('participants.log.unmute'),
+        'announcement' => tr('participants.log.announcement'),
         _ => action,
       };
 
@@ -108,12 +110,12 @@ class _ParticipantsScreenState extends State<ParticipantsScreen> {
 
     return Scaffold(
       backgroundColor: const Color(0xFF101418),
-      appBar: AppBar(backgroundColor: Colors.black26, title: const Text('Participanți')),
+      appBar: AppBar(backgroundColor: Colors.black26, title: Text(tr('mainMenu.participants')), actions: const [LanguageButton()]),
       body: SafeArea(
         child: ListView(
           padding: const EdgeInsets.all(16),
           children: [
-            const Text('Anunț către toate camerele', style: TextStyle(color: Colors.white70, fontWeight: FontWeight.bold)),
+            Text(tr('participants.announceAll'), style: const TextStyle(color: Colors.white70, fontWeight: FontWeight.bold)),
             const SizedBox(height: 8),
             Row(
               children: [
@@ -121,22 +123,22 @@ class _ParticipantsScreenState extends State<ParticipantsScreen> {
                   child: TextField(
                     controller: _announcementController,
                     style: const TextStyle(color: Colors.white),
-                    decoration: const InputDecoration(hintText: 'ex: Vă rugăm păstrați un limbaj decent'),
+                    decoration: InputDecoration(hintText: tr('participants.announceHint')),
                     onSubmitted: (_) => _sendAnnouncement(),
                   ),
                 ),
                 const SizedBox(width: 8),
-                FilledButton(onPressed: _sendAnnouncement, child: const Text('Trimite')),
+                FilledButton(onPressed: _sendAnnouncement, child: Text(tr('common.send'))),
               ],
             ),
             const SizedBox(height: 24),
-            Text('Conectați acum (${inRoom.length})',
+            Text(tr('participants.connectedNow', {'n': inRoom.length}),
                 style: const TextStyle(color: Colors.white70, fontWeight: FontWeight.bold)),
             const SizedBox(height: 8),
             if (inRoom.isEmpty)
-              const Padding(
-                padding: EdgeInsets.symmetric(vertical: 8),
-                child: Text('Niciun invitat într-o cameră încă.', style: TextStyle(color: Colors.white38)),
+              Padding(
+                padding: const EdgeInsets.symmetric(vertical: 8),
+                child: Text(tr('participants.noneInRoom'), style: const TextStyle(color: Colors.white38)),
               )
             else
               ...inRoom.map((p) => Card(
@@ -144,9 +146,9 @@ class _ParticipantsScreenState extends State<ParticipantsScreen> {
                       leading: Icon(Icons.person, color: p.connected ? Colors.lightGreenAccent : Colors.white38),
                       title: Text(p.name, style: const TextStyle(color: Colors.white)),
                       subtitle: Text(
-                        '${p.activityTitle} · cod ${p.roomCode}'
-                        '${p.connected ? '' : ' · deconectat'}'
-                        '${p.muted ? ' · silențiat' : ''}',
+                        '${p.activityTitle} · ${tr('participants.code', {'code': p.roomCode})}'
+                        '${p.connected ? '' : tr('participants.disconnectedSuffix')}'
+                        '${p.muted ? tr('participants.mutedSuffix') : ''}',
                         style: const TextStyle(color: Colors.white54),
                       ),
                       trailing: Row(
@@ -154,17 +156,17 @@ class _ParticipantsScreenState extends State<ParticipantsScreen> {
                         children: [
                           IconButton(
                             icon: Icon(p.muted ? Icons.mic : Icons.mic_off, color: Colors.amberAccent),
-                            tooltip: p.muted ? 'Anulează silențierea' : 'Silențiază',
+                            tooltip: p.muted ? tr('participants.unmute') : tr('participants.mute'),
                             onPressed: () => _toggleMute(p),
                           ),
                           IconButton(
                             icon: const Icon(Icons.person_remove, color: Colors.orangeAccent),
-                            tooltip: 'Elimină',
+                            tooltip: tr('participants.kick'),
                             onPressed: () => _kick(p),
                           ),
                           IconButton(
                             icon: const Icon(Icons.block, color: Colors.redAccent),
-                            tooltip: 'Blochează',
+                            tooltip: tr('participants.block'),
                             onPressed: p.blocked ? null : () => _block(p),
                           ),
                         ],
@@ -172,12 +174,12 @@ class _ParticipantsScreenState extends State<ParticipantsScreen> {
                     ),
                   )),
             const SizedBox(height: 24),
-            Text('Blocați (${blocked.length})', style: const TextStyle(color: Colors.white70, fontWeight: FontWeight.bold)),
+            Text(tr('participants.blocked', {'n': blocked.length}), style: const TextStyle(color: Colors.white70, fontWeight: FontWeight.bold)),
             const SizedBox(height: 8),
             if (blocked.isEmpty)
-              const Padding(
-                padding: EdgeInsets.symmetric(vertical: 8),
-                child: Text('Niciun invitat blocat.', style: TextStyle(color: Colors.white38)),
+              Padding(
+                padding: const EdgeInsets.symmetric(vertical: 8),
+                child: Text(tr('participants.noneBlocked'), style: const TextStyle(color: Colors.white38)),
               )
             else
               ...blocked.map((p) => Card(
@@ -186,17 +188,17 @@ class _ParticipantsScreenState extends State<ParticipantsScreen> {
                       title: Text(p.name, style: const TextStyle(color: Colors.white)),
                       trailing: OutlinedButton(
                         onPressed: () => _unblock(p),
-                        child: const Text('Deblochează'),
+                        child: Text(tr('participants.unblock')),
                       ),
                     ),
                   )),
             const SizedBox(height: 24),
-            Text('Istoric moderare (${_log.length})', style: const TextStyle(color: Colors.white70, fontWeight: FontWeight.bold)),
+            Text(tr('participants.history', {'n': _log.length}), style: const TextStyle(color: Colors.white70, fontWeight: FontWeight.bold)),
             const SizedBox(height: 8),
             if (_log.isEmpty)
-              const Padding(
-                padding: EdgeInsets.symmetric(vertical: 8),
-                child: Text('Nicio acțiune încă.', style: TextStyle(color: Colors.white38)),
+              Padding(
+                padding: const EdgeInsets.symmetric(vertical: 8),
+                child: Text(tr('participants.noActions'), style: const TextStyle(color: Colors.white38)),
               )
             else
               ..._log.map((e) => ListTile(

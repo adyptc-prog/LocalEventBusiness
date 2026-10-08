@@ -8,6 +8,7 @@ import '../core/game_engine.dart';
 import '../core/match_record.dart';
 import 'game_message.dart';
 import 'lobby_room.dart';
+import '../l10n/tr.dart';
 
 /// Un jucător cunoscut de o cameră — pentru ecranul de moderare al
 /// organizatorului (`ParticipantsScreen`), nu pentru protocolul de joc.
@@ -46,7 +47,7 @@ class RoomSession {
   /// poată elimina din listă.
   final void Function() onEmpty;
 
-  static const String organizerChatId = '__organizer__';
+  static const String organizerChatId = ChatMessage.organizerId;
 
   final Map<String, WebSocketChannel> _clientChannels = {};
   final Map<String, String> _playerNames = {};
@@ -167,7 +168,7 @@ class RoomSession {
     required WebSocketChannel channel,
   }) {
     if (_kickedPlayerIds.contains(playerId)) {
-      throw StateError('Ai fost dat afară din această cameră de organizator.');
+      throw GameError('err.kicked');
     }
     if (_knownPlayerIds.contains(playerId)) {
       final previous = _clientChannels[playerId];
@@ -186,7 +187,7 @@ class RoomSession {
       return;
     }
     if (engine.started && !engine.acceptsPlayersWhileStarted) {
-      throw StateError('Jocul a început deja — poți intra după ce se termină partida.');
+      throw GameError('err.gameInProgressJoin');
     }
     engine.addPlayer(id: playerId, name: name, isHost: isHost);
     _playerNames[playerId] = name;
@@ -208,10 +209,10 @@ class RoomSession {
   /// configurat să nu poată porni jocul altcuiva.
   void startGame(String requesterId) {
     if (requesterId != _hostId) {
-      throw StateError('Doar cel care a creat camera poate începe jocul.');
+      throw GameError('err.onlyHostStarts');
     }
     if (engine.started) {
-      throw StateError('Jocul e deja în desfășurare.');
+      throw GameError('err.alreadyStarted');
     }
     _matchRecorded = false;
     engine.startGame();

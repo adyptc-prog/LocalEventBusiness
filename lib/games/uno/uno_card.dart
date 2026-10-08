@@ -1,3 +1,5 @@
+import '../../l10n/tr.dart';
+
 enum UnoColor { red, yellow, green, blue }
 
 enum UnoCardType { number, skip, reverse, drawTwo, wild, wildDrawFour }
@@ -6,13 +8,13 @@ extension UnoColorDisplay on UnoColor {
   String get label {
     switch (this) {
       case UnoColor.red:
-        return 'Roșu';
+        return tr('uno.color.red');
       case UnoColor.yellow:
-        return 'Galben';
+        return tr('uno.color.yellow');
       case UnoColor.green:
-        return 'Verde';
+        return tr('uno.color.green');
       case UnoColor.blue:
-        return 'Albastru';
+        return tr('uno.color.blue');
     }
   }
 }

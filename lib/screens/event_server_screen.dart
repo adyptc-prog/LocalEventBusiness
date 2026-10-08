@@ -5,7 +5,10 @@ import 'package:network_info_plus/network_info_plus.dart';
 
 import '../network/event_server_runner.dart';
 import '../network/event_server_service.dart' show EventServerService;
+import '../core/activity_catalog.dart';
 import '../network/lobby_room.dart';
+import '../widgets/language_button.dart';
+import '../l10n/tr.dart';
 
 /// Ecranul telefonului-server dedicat al evenimentului: pornește serverul
 /// central (care poate găzdui simultan orice număr de camere, pentru orice
@@ -70,8 +73,8 @@ class _EventServerScreenState extends State<EventServerScreen> {
       _error = null;
     });
     try {
-      final ok = await EventServerRunner.start(serverName: 'Server eveniment');
-      if (!ok) throw Exception('Serviciul de fundal nu a putut porni.');
+      final ok = await EventServerRunner.start(serverName: tr('eventServer.title'));
+      if (!ok) throw Exception(tr('eventServer.serviceFailed'));
       // `start()` confirmă doar că foreground service-ul Android a fost
       // lansat — legarea efectivă a `HttpServer`-ului (ex: port deja ocupat)
       // se întâmplă asincron, în isolate-ul serverului; așteptăm un moment
@@ -93,7 +96,7 @@ class _EventServerScreenState extends State<EventServerScreen> {
       if (!mounted) return;
       setState(() {
         _starting = false;
-        _error = 'Nu am putut porni serverul: $e';
+        _error = tr('eventServer.startFailed', {'error': e});
       });
     }
   }
@@ -114,7 +117,7 @@ class _EventServerScreenState extends State<EventServerScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: const Color(0xFF101418),
-      appBar: AppBar(backgroundColor: Colors.black26, title: const Text('Server eveniment')),
+      appBar: AppBar(backgroundColor: Colors.black26, title: Text(tr('eventServer.title')), actions: const [LanguageButton()]),
       body: SafeArea(
         child: Padding(
           padding: const EdgeInsets.all(24),
@@ -130,16 +133,16 @@ class _EventServerScreenState extends State<EventServerScreen> {
       children: [
         const Icon(Icons.dns, size: 72, color: Colors.white70),
         const SizedBox(height: 16),
-        const Text(
-          'Pornește acest telefon ca server central pentru eveniment. Toți invitații — Android sau iPhone — se vor putea conecta și își vor putea crea singuri camere de joc.',
+        Text(
+          tr('eventServer.intro'),
           textAlign: TextAlign.center,
-          style: TextStyle(color: Colors.white70),
+          style: const TextStyle(color: Colors.white70),
         ),
         const SizedBox(height: 8),
-        const Text(
-          'Ține telefonul la priză și conectat la aceeași rețea Wi-Fi pe tot parcursul evenimentului.',
+        Text(
+          tr('eventServer.keepPlugged'),
           textAlign: TextAlign.center,
-          style: TextStyle(color: Colors.white38, fontSize: 12),
+          style: const TextStyle(color: Colors.white38, fontSize: 12),
         ),
         const SizedBox(height: 32),
         if (_error != null)
@@ -153,7 +156,7 @@ class _EventServerScreenState extends State<EventServerScreen> {
             onPressed: _starting ? null : _start,
             child: _starting
                 ? const SizedBox(width: 20, height: 20, child: CircularProgressIndicator(strokeWidth: 2))
-                : const Text('Pornește serverul evenimentului'),
+                : Text(tr('eventServer.start')),
           ),
         ),
       ],
@@ -164,27 +167,27 @@ class _EventServerScreenState extends State<EventServerScreen> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
-        const Row(
+        Row(
           children: [
-            Icon(Icons.circle, color: Colors.greenAccent, size: 12),
-            SizedBox(width: 8),
-            Text('Server activ', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
+            const Icon(Icons.circle, color: Colors.greenAccent, size: 12),
+            const SizedBox(width: 8),
+            Text(tr('eventServer.active'), style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
           ],
         ),
         const SizedBox(height: 8),
         if (_localIp != null) ...[
-          Text('Adresă: $_localIp:${EventServerService.webPort}', style: const TextStyle(color: Colors.white70)),
-          Text('Link pentru iPhone/browser: http://$_localIp:${EventServerService.webPort}',
+          Text(tr('eventServer.address', {'address': '$_localIp:${EventServerService.webPort}'}), style: const TextStyle(color: Colors.white70)),
+          Text(tr('eventServer.link', {'url': 'http://$_localIp:${EventServerService.webPort}'}),
               style: const TextStyle(color: Colors.white38, fontSize: 12)),
         ] else
-          const Text('IP-ul local nu a putut fi citit — invitații Android te găsesc automat oricum.',
-              style: TextStyle(color: Colors.white38, fontSize: 12)),
+          Text(tr('eventServer.noIp'),
+              style: const TextStyle(color: Colors.white38, fontSize: 12)),
         const SizedBox(height: 24),
-        Text('Camere active (${_rooms.length})', style: const TextStyle(color: Colors.white70, fontWeight: FontWeight.w600)),
+        Text(tr('eventServer.activeRooms', {'n': _rooms.length}), style: const TextStyle(color: Colors.white70, fontWeight: FontWeight.w600)),
         const SizedBox(height: 8),
         Expanded(
           child: _rooms.isEmpty
-              ? const Center(child: Text('Nicio cameră deschisă încă.', style: TextStyle(color: Colors.white38)))
+              ? Center(child: Text(tr('eventServer.noRooms'), style: const TextStyle(color: Colors.white38)))
               : ListView.separated(
                   itemCount: _rooms.length,
                   separatorBuilder: (_, _) => const Divider(color: Colors.white24),
@@ -192,10 +195,11 @@ class _EventServerScreenState extends State<EventServerScreen> {
                     final room = _rooms[index];
                     return ListTile(
                       leading: const Icon(Icons.videogame_asset, color: Colors.white70),
-                      title: Text(room.roomName, style: const TextStyle(color: Colors.white)),
+                      title: Text(room.gameId == 'menu' ? activityTitleFor('menu') : room.roomName, style: const TextStyle(color: Colors.white)),
                       subtitle: Text(
-                        '${room.gameTitle} · ${room.players}/${room.maxPlayers} jucători · cod ${room.code}'
-                        '${room.started ? ' · în desfășurare' : ''}',
+                        '${activityTitleFor(room.gameId, fallback: room.gameTitle)} · '
+                        '${tr('rooms.roomSubtitle', {'players': room.players, 'max': room.maxPlayers, 'code': room.code})}'
+                        '${room.started ? tr('rooms.inProgressSuffix') : ''}',
                         style: const TextStyle(color: Colors.white54),
                       ),
                     );
@@ -208,7 +212,7 @@ class _EventServerScreenState extends State<EventServerScreen> {
           child: OutlinedButton(
             onPressed: _stop,
             style: OutlinedButton.styleFrom(foregroundColor: Colors.redAccent, side: const BorderSide(color: Colors.redAccent)),
-            child: const Text('Oprește serverul'),
+            child: Text(tr('eventServer.stop')),
           ),
         ),
       ],

@@ -2,6 +2,7 @@ import 'dart:math';
 
 import '../../core/game_engine.dart';
 import '../../models/card.dart';
+import '../../l10n/tr.dart';
 
 class _WarPlayerInfo {
   final String id;
@@ -46,7 +47,7 @@ class WarEngine extends GameEngine {
   @override
   void addPlayer({required String id, required String name, required bool isHost}) {
     if (_players.length >= maxPlayers) {
-      throw StateError('Camera este plină (maxim $maxPlayers jucători).');
+      throw GameError('err.roomFull', {'max': maxPlayers});
     }
     _players.add(_WarPlayerInfo(id: id, name: name, isHost: isHost));
     notifyListeners();
@@ -70,9 +71,9 @@ class WarEngine extends GameEngine {
 
   @override
   void startGame() {
-    if (started) throw StateError('Jocul e deja în desfășurare.');
+    if (started) throw GameError('err.alreadyStarted');
     if (_players.length != minPlayers) {
-      throw StateError('Sunt necesari exact $minPlayers jucători.');
+      throw GameError('err.playersExact', {'n': minPlayers});
     }
     final deck = PlayingCard.fullDeck()..shuffle(Random());
     final half = deck.length ~/ 2;
@@ -94,16 +95,16 @@ class WarEngine extends GameEngine {
   @override
   void applyAction(String playerId, Map<String, dynamic> action) {
     if (action['type'] != 'flip') {
-      throw StateError('Acțiune necunoscută.');
+      throw GameError('err.unknownAction');
     }
     _flip(playerId);
   }
 
   void _flip(String playerId) {
-    if (!started || winnerId != null) throw StateError('Jocul nu este activ.');
-    if (!_decks.containsKey(playerId)) throw StateError('Jucător necunoscut.');
+    if (!started || winnerId != null) throw GameError('err.gameNotActive');
+    if (!_decks.containsKey(playerId)) throw GameError('err.unknownPlayer');
     if (_revealed.containsKey(playerId)) {
-      throw StateError('Ai întors deja cartea, aștepți adversarul.');
+      throw GameError('err.war.alreadyFlipped');
     }
 
     final deck = _decks[playerId]!;

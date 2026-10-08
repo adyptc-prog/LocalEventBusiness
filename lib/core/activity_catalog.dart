@@ -14,3 +14,13 @@ final List<GameDefinition> activityCatalog = [
   chatDefinition,
   menuDefinition,
 ];
+
+/// Numele activității [id] în limba curentă — pentru ce vine de la server
+/// doar ca id (lista de camere, rezultate de partide). [fallback] (titlul
+/// trimis de server) rămâne pentru o activitate necunoscută acestui client.
+String activityTitleFor(String id, {String? fallback}) {
+  for (final activity in activityCatalog) {
+    if (activity.id == id) return activity.title;
+  }
+  return fallback ?? id;
+}

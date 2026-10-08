@@ -2,10 +2,12 @@ import 'package:flutter/material.dart';
 
 import '../core/activity_catalog.dart';
 import '../core/games_registry.dart';
+import '../widgets/language_button.dart';
 import '../widgets/menu_card.dart';
 import 'game_library_screen.dart';
 import 'menu_connect_screen.dart';
 import 'room_browser_screen.dart';
+import '../l10n/tr.dart';
 
 /// Meniul propriu-zis al invitatului, randat local din lista de id-uri de
 /// activități primită de la server (`EventConnectScreen`) — doar ce a
@@ -29,8 +31,8 @@ class EventMenuScreen extends StatelessWidget {
       if (enabledGameIds.isNotEmpty)
         MenuCard(
           icon: Icons.sports_esports,
-          title: 'Jocuri',
-          subtitle: 'Alege un joc de cărți și creează sau alătură-te unei mese.',
+          title: tr('eventMenu.games.title'),
+          subtitle: tr('eventMenu.games.subtitle'),
           color: const Color(0xFF0B5E3B),
           onTap: () => Navigator.of(context).push(
             MaterialPageRoute(builder: (context) => GameLibraryScreen(enabledGameIds: enabledGameIds)),
@@ -53,16 +55,16 @@ class EventMenuScreen extends StatelessWidget {
 
     return Scaffold(
       backgroundColor: const Color(0xFF101418),
-      appBar: AppBar(backgroundColor: Colors.black26, title: const Text('Ce vrei să faci?')),
+      appBar: AppBar(backgroundColor: Colors.black26, title: Text(tr('eventMenu.title')), actions: const [LanguageButton()]),
       body: SafeArea(
         child: Padding(
           padding: const EdgeInsets.all(24),
           child: cards.isEmpty
-              ? const Center(
+              ? Center(
                   child: Text(
-                    'Organizatorul nu a activat nicio activitate pentru acest eveniment încă.',
+                    tr('eventMenu.empty'),
                     textAlign: TextAlign.center,
-                    style: TextStyle(color: Colors.white54),
+                    style: const TextStyle(color: Colors.white54),
                   ),
                 )
               : ListView.separated(

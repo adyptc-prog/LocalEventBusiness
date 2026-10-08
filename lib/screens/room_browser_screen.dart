@@ -8,7 +8,9 @@ import '../core/player_profile.dart';
 import '../network/client_service.dart';
 import '../network/event_server_runner.dart';
 import '../network/event_server_service.dart';
+import '../widgets/language_button.dart';
 import 'lobby_screen.dart';
+import '../l10n/tr.dart';
 
 /// Punctul unic de intrare într-un joc: conectare la serverul central al
 /// evenimentului, apoi crearea sau alăturarea unei camere — identic pe
@@ -86,7 +88,7 @@ class _RoomBrowserScreenState extends State<RoomBrowserScreen> {
 
   Future<void> _connect(String host, int port) async {
     if (_myName.isEmpty) {
-      setState(() => _error = 'Introdu-ți numele mai întâi.');
+      setState(() => _error = tr('rooms.enterNameFirst'));
       return;
     }
     setState(() {
@@ -110,7 +112,7 @@ class _RoomBrowserScreenState extends State<RoomBrowserScreen> {
       if (!mounted) return;
       setState(() {
         _connecting = false;
-        _error = 'Nu m-am putut conecta: $e';
+        _error = tr('connect.failed', {'error': e});
       });
     }
   }
@@ -144,7 +146,7 @@ class _RoomBrowserScreenState extends State<RoomBrowserScreen> {
         MaterialPageRoute(
           builder: (context) => LobbyScreen(
             definition: widget.definition,
-            roomName: 'Cameră ${widget.definition.title}',
+            roomName: tr('rooms.defaultName', {'game': widget.definition.title}),
             isHost: isHost,
             myId: myId,
             roomCode: _clientService.roomCode,
@@ -164,13 +166,13 @@ class _RoomBrowserScreenState extends State<RoomBrowserScreen> {
       if (!mounted) return;
       setState(() {
         _connecting = false;
-        _error = 'Nu am putut intra în cameră: $e';
+        _error = tr('rooms.enterFailed', {'error': e});
       });
     }
   }
 
   Future<void> _showCreateRoomSheet() async {
-    final roomNameController = TextEditingController(text: 'Cameră ${widget.definition.title}');
+    final roomNameController = TextEditingController(text: tr('rooms.defaultName', {'game': widget.definition.title}));
     final stakeController = TextEditingController(text: '0');
     final formKey = GlobalKey<FormState>();
     final hasStake = widget.definition.id != 'chat';
@@ -192,13 +194,13 @@ class _RoomBrowserScreenState extends State<RoomBrowserScreen> {
             mainAxisSize: MainAxisSize.min,
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
-              const Text('Cameră nouă', style: TextStyle(color: Colors.white, fontSize: 18, fontWeight: FontWeight.bold)),
+              Text(tr('rooms.newRoom'), style: const TextStyle(color: Colors.white, fontSize: 18, fontWeight: FontWeight.bold)),
               const SizedBox(height: 16),
               TextFormField(
                 controller: roomNameController,
                 style: const TextStyle(color: Colors.white),
-                decoration: const InputDecoration(labelText: 'Numele camerei', labelStyle: TextStyle(color: Colors.white70)),
-                validator: (v) => (v == null || v.trim().isEmpty) ? 'Introdu un nume' : null,
+                decoration: InputDecoration(labelText: tr('rooms.roomName'), labelStyle: const TextStyle(color: Colors.white70)),
+                validator: (v) => (v == null || v.trim().isEmpty) ? tr('rooms.enterAName') : null,
               ),
               if (hasStake) ...[
                 const SizedBox(height: 12),
@@ -206,11 +208,11 @@ class _RoomBrowserScreenState extends State<RoomBrowserScreen> {
                   controller: stakeController,
                   keyboardType: TextInputType.number,
                   style: const TextStyle(color: Colors.white),
-                  decoration: const InputDecoration(
-                    labelText: 'Miza mesei (opțional)',
-                    helperText: 'Câștigătorul partidei primește această sumă în clasament.',
-                    helperStyle: TextStyle(color: Colors.white38),
-                    labelStyle: TextStyle(color: Colors.white70),
+                  decoration: InputDecoration(
+                    labelText: tr('rooms.stake'),
+                    helperText: tr('rooms.stakeHelp'),
+                    helperStyle: const TextStyle(color: Colors.white38),
+                    labelStyle: const TextStyle(color: Colors.white70),
                   ),
                 ),
               ],
@@ -221,7 +223,7 @@ class _RoomBrowserScreenState extends State<RoomBrowserScreen> {
                     Navigator.of(context).pop(true);
                   }
                 },
-                child: const Text('Creează'),
+                child: Text(tr('rooms.create')),
               ),
             ],
           ),
@@ -274,22 +276,22 @@ class _RoomBrowserScreenState extends State<RoomBrowserScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: widget.definition.accentColor,
-      appBar: AppBar(backgroundColor: Colors.black26, title: Text(widget.definition.title)),
+      appBar: AppBar(backgroundColor: Colors.black26, title: Text(widget.definition.title), actions: const [LanguageButton()]),
       body: SafeArea(
         child: Padding(
           padding: const EdgeInsets.all(16),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
-              _StepLabel(number: 1, text: 'Numele tău'),
+              _StepLabel(number: 1, text: tr('rooms.yourName')),
               const SizedBox(height: 8),
               TextField(
                 controller: _nameController,
                 enabled: !_connecting && !_connected,
                 style: const TextStyle(color: Colors.white),
-                decoration: const InputDecoration(
-                  hintText: 'Cum te văd ceilalți jucători',
-                  hintStyle: TextStyle(color: Colors.white38),
+                decoration: InputDecoration(
+                  hintText: tr('rooms.nameHint'),
+                  hintStyle: const TextStyle(color: Colors.white38),
                   enabledBorder: UnderlineInputBorder(borderSide: BorderSide(color: Colors.white38)),
                 ),
               ),
@@ -318,20 +320,20 @@ class _RoomBrowserScreenState extends State<RoomBrowserScreen> {
 
   List<Widget> _buildWebConnectSection() {
     return [
-      _StepLabel(number: 2, text: 'Adresa serverului evenimentului'),
+      _StepLabel(number: 2, text: tr('rooms.serverAddress')),
       const SizedBox(height: 4),
-      const Text(
-        'Un browser nu poate găsi serverul automat — dar fiindcă ai deschis această pagină direct de la el, adresa e deja completată mai jos.',
-        style: TextStyle(color: Colors.white54, fontSize: 12),
+      Text(
+        tr('connect.webHint'),
+        style: const TextStyle(color: Colors.white54, fontSize: 12),
       ),
       const SizedBox(height: 8),
       TextField(
         controller: _webAddressController,
         enabled: !_connecting,
         style: const TextStyle(color: Colors.white),
-        decoration: const InputDecoration(
-          hintText: 'ex: 192.168.43.1:45034',
-          hintStyle: TextStyle(color: Colors.white38),
+        decoration: InputDecoration(
+          hintText: tr('connect.webAddressHint'),
+          hintStyle: const TextStyle(color: Colors.white38),
           enabledBorder: UnderlineInputBorder(borderSide: BorderSide(color: Colors.white38)),
         ),
       ),
@@ -340,17 +342,17 @@ class _RoomBrowserScreenState extends State<RoomBrowserScreen> {
         onPressed: _connecting ? null : _connectWebAddress,
         child: _connecting
             ? const SizedBox(width: 20, height: 20, child: CircularProgressIndicator(strokeWidth: 2))
-            : const Text('Conectează'),
+            : Text(tr('common.connect')),
       ),
     ];
   }
 
   List<Widget> _buildNativeConnectSection() {
     return [
-      _StepLabel(number: 2, text: 'Servere de eveniment găsite pe rețea'),
+      _StepLabel(number: 2, text: tr('rooms.serversFound')),
       const SizedBox(height: 4),
       Text(
-        'Conectează-te la același Wi-Fi sau hotspot ca serverul — apare automat aici.',
+        tr('rooms.serversHint'),
         style: TextStyle(color: Colors.white.withValues(alpha: 0.5), fontSize: 12),
       ),
       const SizedBox(height: 8),
@@ -359,8 +361,8 @@ class _RoomBrowserScreenState extends State<RoomBrowserScreen> {
           color: Colors.green.withValues(alpha: 0.15),
           child: ListTile(
             leading: const Icon(Icons.smartphone, color: Colors.lightGreenAccent),
-            title: const Text('Acest telefon (server local)'),
-            subtitle: const Text('Conectare directă, recomandat — nu depinde de router.'),
+            title: Text(tr('rooms.thisPhone')),
+            subtitle: Text(tr('rooms.thisPhoneHint')),
             trailing: _connecting
                 ? const SizedBox(width: 20, height: 20, child: CircularProgressIndicator(strokeWidth: 2))
                 : const Icon(Icons.arrow_forward),
@@ -373,7 +375,7 @@ class _RoomBrowserScreenState extends State<RoomBrowserScreen> {
               child: Center(
                 child: _connecting
                     ? const CircularProgressIndicator()
-                    : const Text('Se caută serverul...', style: TextStyle(color: Colors.white38)),
+                    : Text(tr('connect.searching'), style: const TextStyle(color: Colors.white38)),
               ),
             )
           : Column(
@@ -382,7 +384,7 @@ class _RoomBrowserScreenState extends State<RoomBrowserScreen> {
                         child: ListTile(
                           leading: const Icon(Icons.dns),
                           title: Text(server.name),
-                          subtitle: Text('${server.rooms} camere active · ${server.address}'),
+                          subtitle: Text(tr('connect.serverSubtitle', {'n': server.rooms, 'address': server.address})),
                           trailing: _connecting
                               ? const SizedBox(width: 20, height: 20, child: CircularProgressIndicator(strokeWidth: 2))
                               : const Icon(Icons.arrow_forward),
@@ -392,9 +394,9 @@ class _RoomBrowserScreenState extends State<RoomBrowserScreen> {
                   .toList(),
             ),
       const Divider(color: Colors.white24),
-      _StepLabel(number: 3, text: 'Nu găsești serverul?'),
+      _StepLabel(number: 3, text: tr('rooms.cantFind')),
       ExpansionTile(
-        title: const Text('Introdu IP-ul manual', style: TextStyle(color: Colors.white70)),
+        title: Text(tr('rooms.enterIp'), style: const TextStyle(color: Colors.white70)),
         collapsedIconColor: Colors.white70,
         iconColor: Colors.white70,
         children: [
@@ -405,16 +407,16 @@ class _RoomBrowserScreenState extends State<RoomBrowserScreen> {
                   controller: _manualHostController,
                   enabled: !_connecting,
                   style: const TextStyle(color: Colors.white),
-                  decoration: const InputDecoration(
-                    hintText: 'ex: 192.168.43.1',
-                    hintStyle: TextStyle(color: Colors.white38),
+                  decoration: InputDecoration(
+                    hintText: tr('connect.ipHint'),
+                    hintStyle: const TextStyle(color: Colors.white38),
                   ),
                 ),
               ),
               const SizedBox(width: 8),
               FilledButton(
                 onPressed: _connecting ? null : _connectManualHost,
-                child: const Text('Conectează'),
+                child: Text(tr('common.connect')),
               ),
             ],
           ),
@@ -431,16 +433,16 @@ class _RoomBrowserScreenState extends State<RoomBrowserScreen> {
           width: double.infinity,
           child: FilledButton.icon(
             icon: const Icon(Icons.add_circle_outline),
-            label: const Text('Creează cameră'),
+            label: Text(tr('rooms.createRoom')),
             onPressed: _connecting ? null : _showCreateRoomSheet,
           ),
         ),
         const SizedBox(height: 16),
-        _StepLabel(number: 3, text: 'Camere de ${widget.definition.title} active'),
+        _StepLabel(number: 3, text: tr('rooms.activeRooms', {'game': widget.definition.title})),
         const SizedBox(height: 8),
         Expanded(
           child: _rooms.isEmpty
-              ? const Center(child: Text('Nicio cameră deschisă încă — fii primul.', style: TextStyle(color: Colors.white38)))
+              ? Center(child: Text(tr('rooms.none'), style: const TextStyle(color: Colors.white38)))
               : ListView.builder(
                   itemCount: _rooms.length,
                   itemBuilder: (context, index) {
@@ -449,8 +451,8 @@ class _RoomBrowserScreenState extends State<RoomBrowserScreen> {
                       child: ListTile(
                         leading: const Icon(Icons.videogame_asset),
                         title: Text(room.roomName),
-                        subtitle: Text('${room.players}/${room.maxPlayers} jucători · cod ${room.code}'
-                            '${room.started ? ' · în desfășurare' : ''}'),
+                        subtitle: Text(tr('rooms.roomSubtitle', {'players': room.players, 'max': room.maxPlayers, 'code': room.code}) +
+                            (room.started ? tr('rooms.inProgressSuffix') : '')),
                         trailing: _connecting
                             ? const SizedBox(width: 20, height: 20, child: CircularProgressIndicator(strokeWidth: 2))
                             : const Icon(Icons.arrow_forward),
@@ -462,7 +464,7 @@ class _RoomBrowserScreenState extends State<RoomBrowserScreen> {
         ),
         const Divider(color: Colors.white24),
         ExpansionTile(
-          title: const Text('Am un cod de cameră', style: TextStyle(color: Colors.white70)),
+          title: Text(tr('rooms.haveCode'), style: const TextStyle(color: Colors.white70)),
           collapsedIconColor: Colors.white70,
           iconColor: Colors.white70,
           children: [
@@ -474,16 +476,16 @@ class _RoomBrowserScreenState extends State<RoomBrowserScreen> {
                     enabled: !_connecting,
                     textCapitalization: TextCapitalization.characters,
                     style: const TextStyle(color: Colors.white),
-                    decoration: const InputDecoration(
-                      hintText: 'ex: K7QX',
-                      hintStyle: TextStyle(color: Colors.white38),
+                    decoration: InputDecoration(
+                      hintText: tr('rooms.codeHint'),
+                      hintStyle: const TextStyle(color: Colors.white38),
                     ),
                   ),
                 ),
                 const SizedBox(width: 8),
                 FilledButton(
                   onPressed: _connecting ? null : _joinManualCode,
-                  child: const Text('Alătură-te'),
+                  child: Text(tr('rooms.join')),
                 ),
               ],
             ),

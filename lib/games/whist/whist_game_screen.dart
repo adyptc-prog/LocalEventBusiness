@@ -9,6 +9,8 @@ import '../../widgets/hand_widget.dart';
 import '../../widgets/playing_card_widget.dart';
 import 'whist_scoresheet_screen.dart';
 import 'whist_snapshot.dart';
+import '../../l10n/tr.dart';
+import '../../widgets/language_button.dart';
 
 class WhistGameScreen extends StatefulWidget {
   final GameSessionArgs args;
@@ -58,12 +60,12 @@ class _WhistGameScreenState extends State<WhistGameScreen> {
     _winnerDialogShown = true;
     final isMe = _snapshot.winnerId == widget.args.myId;
     final myScore = _snapshot.cumulativeScores[widget.args.myId] ?? 0;
-    final title = _snapshot.isDraw ? 'Egalitate!' : (isMe ? 'Ai câștigat! 🎉' : 'Joc terminat');
+    final title = _snapshot.isDraw ? tr('game.draw') : (isMe ? tr('game.youWon') : tr('game.over'));
     final content = _snapshot.isDraw
-        ? 'Ai terminat la egalitate, cu $myScore puncte.'
+        ? tr('game.drawWithScore', {'score': myScore})
         : (isMe
-            ? 'Ai câștigat cu $myScore puncte.'
-            : '${_snapshot.winnerName(widget.args.myId) ?? 'Adversarul'} a câștigat. Tu ai terminat cu $myScore puncte.');
+            ? tr('game.wonWithScore', {'score': myScore})
+            : tr('game.theyWonYouScored', {'name': _snapshot.winnerName(widget.args.myId) ?? tr('war.opponentThe'), 'score': myScore}));
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (!mounted) return;
       showDialog(
@@ -77,7 +79,7 @@ class _WhistGameScreenState extends State<WhistGameScreen> {
               onPressed: () => Navigator.of(context).push(
                 MaterialPageRoute(builder: (context) => WhistScoresheetScreen(snapshot: _snapshot, myId: widget.args.myId)),
               ),
-              child: const Text('Vezi tabelul'),
+              child: Text(tr('game.viewScoresheet')),
             ),
             TextButton(
               onPressed: () {
@@ -86,7 +88,7 @@ class _WhistGameScreenState extends State<WhistGameScreen> {
                   ..pop()
                   ..popUntil((route) => route.isFirst);
               },
-              child: const Text('Înapoi la meniu'),
+              child: Text(tr('game.backToMenu')),
             ),
           ],
         ),
@@ -118,18 +120,18 @@ class _WhistGameScreenState extends State<WhistGameScreen> {
       backgroundColor: const Color(0xFF213A2B),
       appBar: AppBar(
         backgroundColor: const Color(0xFF152719),
-        title: Text('Runda ${_snapshot.roundNumber}/${_snapshot.totalRounds} — mână de ${_snapshot.handSize}'),
+        title: Text(tr('whist.roundTitle', {'round': _snapshot.roundNumber, 'total': _snapshot.totalRounds, 'hand': _snapshot.handSize})),
         actions: [
           IconButton(
             icon: const Icon(Icons.table_chart),
-            tooltip: 'Tabel',
+            tooltip: tr('game.scoresheet'),
             onPressed: () => Navigator.of(context).push(
               MaterialPageRoute(builder: (context) => WhistScoresheetScreen(snapshot: _snapshot, myId: widget.args.myId)),
             ),
           ),
           IconButton(
             icon: const Icon(Icons.leaderboard),
-            tooltip: 'Clasament și chat',
+            tooltip: tr('lobby.leaderboardAndChat'),
             onPressed: () => Navigator.of(context).push(
               MaterialPageRoute(
                 builder: (context) => LeaderboardScreen(
@@ -144,12 +146,13 @@ class _WhistGameScreenState extends State<WhistGameScreen> {
           ),
           IconButton(
             icon: const Icon(Icons.exit_to_app),
-            tooltip: 'Ieși din joc',
+            tooltip: tr('game.leave'),
             onPressed: () {
               widget.args.onLeave();
               Navigator.of(context).popUntil((route) => route.isFirst);
             },
           ),
+          const LanguageButton(),
         ],
       ),
       body: SafeArea(
@@ -160,7 +163,7 @@ class _WhistGameScreenState extends State<WhistGameScreen> {
             Expanded(
               child: _snapshot.isBidding ? _buildBiddingArea(isMyTurn) : _buildTrickArea(isMyTurn),
             ),
-            Text('Tu', style: const TextStyle(color: Colors.white70, fontSize: 12)),
+            Text(tr('war.you'), style: const TextStyle(color: Colors.white70, fontSize: 12)),
             HandWidget(
               cards: _snapshot.myHand,
               isPlayable: (card) => !_snapshot.isBidding && isMyTurn && _snapshot.isCardPlayable(card),
@@ -195,10 +198,10 @@ class _WhistGameScreenState extends State<WhistGameScreen> {
               children: [
                 Text(p.name, style: const TextStyle(color: Colors.white, fontSize: 12, fontWeight: FontWeight.bold)),
                 Text(
-                  bid == null ? '$taken luate' : '$taken/$bid luate',
+                  bid == null ? tr('whist.taken', {'n': taken}) : tr('whist.takenOfBid', {'n': taken, 'bid': bid}),
                   style: const TextStyle(color: Colors.white70, fontSize: 11),
                 ),
-                Text('$score pct', style: const TextStyle(color: Colors.amberAccent, fontSize: 11)),
+                Text(tr('leaderboard.points', {'n': score}), style: const TextStyle(color: Colors.amberAccent, fontSize: 11)),
               ],
             ),
           );
@@ -213,14 +216,14 @@ class _WhistGameScreenState extends State<WhistGameScreen> {
         mainAxisSize: MainAxisSize.min,
         children: [
           if (_snapshot.trumpCard != null) ...[
-            const Text('Atu', style: TextStyle(color: Colors.white54)),
+            Text(tr('whist.trump'), style: const TextStyle(color: Colors.white54)),
             const SizedBox(height: 4),
             PlayingCardWidget(card: _snapshot.trumpCard!, width: 64),
           ] else
-            const Text('Fără atu — câștigă cea mai mare carte', style: TextStyle(color: Colors.white54)),
+            Text(tr('whist.noTrumpLong'), style: const TextStyle(color: Colors.white54)),
           const SizedBox(height: 20),
           if (isMyTurn) ...[
-            const Text('Câte levate crezi că iei?', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
+            Text(tr('whist.bidPrompt'), style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
             const SizedBox(height: 12),
             Wrap(
               alignment: WrapAlignment.center,
@@ -236,7 +239,7 @@ class _WhistGameScreenState extends State<WhistGameScreen> {
               ],
             ),
           ] else
-            Text('${_nameOf(_snapshot.currentPlayerId)} licitează...', style: const TextStyle(color: Colors.white70)),
+            Text(tr('whist.isBidding', {'name': _nameOf(_snapshot.currentPlayerId)}), style: const TextStyle(color: Colors.white70)),
         ],
       ),
     );
@@ -248,9 +251,9 @@ class _WhistGameScreenState extends State<WhistGameScreen> {
       mainAxisAlignment: MainAxisAlignment.center,
       children: [
         if (_snapshot.trumpCard != null)
-          Text('Atu: ${_snapshot.trumpCard!.suit.symbol}', style: const TextStyle(color: Colors.white70))
+          Text(tr('whist.trumpIs', {'suit': _snapshot.trumpCard!.suit.symbol}), style: const TextStyle(color: Colors.white70))
         else
-          const Text('Fără atu', style: TextStyle(color: Colors.white70)),
+          Text(tr('whist.noTrump'), style: const TextStyle(color: Colors.white70)),
         const SizedBox(height: 12),
         Wrap(
           alignment: WrapAlignment.center,
@@ -270,13 +273,13 @@ class _WhistGameScreenState extends State<WhistGameScreen> {
         if (_snapshot.currentTrick.isEmpty && _snapshot.lastTrickWinnerId != null)
           Padding(
             padding: const EdgeInsets.only(top: 12),
-            child: Text('${_nameOf(_snapshot.lastTrickWinnerId)} a luat levata',
+            child: Text(tr('whist.tookTrick', {'name': _nameOf(_snapshot.lastTrickWinnerId)}),
                 style: const TextStyle(color: Colors.amberAccent, fontWeight: FontWeight.bold)),
           ),
         if (!isMyTurn)
           Padding(
             padding: const EdgeInsets.only(top: 12),
-            child: Text('${_nameOf(_snapshot.currentPlayerId)} joacă...', style: const TextStyle(color: Colors.white54)),
+            child: Text(tr('game.isPlaying', {'name': _nameOf(_snapshot.currentPlayerId)}), style: const TextStyle(color: Colors.white54)),
           ),
       ],
     );

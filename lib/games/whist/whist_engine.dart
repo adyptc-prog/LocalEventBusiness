@@ -2,6 +2,7 @@ import 'dart:math';
 
 import '../../core/game_engine.dart';
 import '../../models/card.dart';
+import '../../l10n/tr.dart';
 
 class _WhistPlayerInfo {
   final String id;
@@ -105,7 +106,7 @@ class WhistEngine extends GameEngine {
   @override
   void addPlayer({required String id, required String name, required bool isHost}) {
     if (_players.length >= maxPlayers) {
-      throw StateError('Camera este plină (maxim $maxPlayers jucători).');
+      throw GameError('err.roomFull', {'max': maxPlayers});
     }
     _players.add(_WhistPlayerInfo(id: id, name: name, isHost: isHost));
     notifyListeners();
@@ -129,9 +130,9 @@ class WhistEngine extends GameEngine {
 
   @override
   void startGame() {
-    if (started) throw StateError('Jocul e deja în desfășurare.');
+    if (started) throw GameError('err.alreadyStarted');
     if (_players.length < minPlayers || _players.length > maxPlayers) {
-      throw StateError('Sunt necesari $minPlayers-$maxPlayers jucători.');
+      throw GameError('err.playersRange', {'min': minPlayers, 'max': maxPlayers});
     }
     _roundSizes = [
       for (var i = 1; i <= maxHandSize; i++) i,
@@ -199,24 +200,24 @@ class WhistEngine extends GameEngine {
         _playCard(playerId, PlayingCard.fromJson(action['card'] as Map<String, dynamic>));
         break;
       default:
-        throw StateError('Acțiune necunoscută.');
+        throw GameError('err.unknownAction');
     }
   }
 
   void _declareBid(String playerId, int amount) {
-    if (!started || !_bidding) throw StateError('Nu este faza de licitație.');
+    if (!started || !_bidding) throw GameError('err.whist.notBidding');
     if (_biddingTurnIndex >= _turnOrder.length || _turnOrder[_biddingTurnIndex] != playerId) {
-      throw StateError('Nu este rândul tău să licitezi.');
+      throw GameError('err.whist.notYourBid');
     }
     final handSize = _roundSizes[_roundIndex];
     if (amount < 0 || amount > handSize) {
-      throw StateError('Licitația trebuie să fie între 0 și $handSize.');
+      throw GameError('err.whist.bidRange', {'max': handSize});
     }
     final isLastBidder = _biddingTurnIndex == _turnOrder.length - 1;
     if (isLastBidder) {
       final sumSoFar = _bids.values.fold(0, (a, b) => a + b);
       if (sumSoFar + amount == handSize) {
-        throw StateError('Nu poți licita $amount — suma licitațiilor ar fi exact $handSize.');
+        throw GameError('err.whist.forbiddenBid', {'amount': amount, 'total': handSize});
       }
     }
     _bids[playerId] = amount;
@@ -228,17 +229,17 @@ class WhistEngine extends GameEngine {
   }
 
   void _playCard(String playerId, PlayingCard card) {
-    if (!started || _bidding) throw StateError('Nu este faza de joc.');
+    if (!started || _bidding) throw GameError('err.notPlayingPhase');
     if (_turnOrder.isEmpty || _turnOrder[_turnIndex] != playerId) {
-      throw StateError('Nu este rândul tău.');
+      throw GameError('err.notYourTurn');
     }
     final hand = _hands[playerId]!;
-    if (!hand.contains(card)) throw StateError('Nu ai această carte.');
+    if (!hand.contains(card)) throw GameError('err.notYourCard');
     if (_currentTrick.isNotEmpty) {
       final ledSuit = _currentTrick.first.card.suit;
       final hasLedSuit = hand.any((c) => c.suit == ledSuit);
       if (hasLedSuit && card.suit != ledSuit) {
-        throw StateError('Trebuie să joci culoarea cerută dacă o ai.');
+        throw GameError('err.mustFollowSuit');
       }
     }
 

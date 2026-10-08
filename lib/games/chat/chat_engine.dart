@@ -1,4 +1,5 @@
 import '../../core/game_engine.dart';
+import '../../l10n/tr.dart';
 
 class _ChatPlayerInfo {
   final String id;
@@ -33,7 +34,7 @@ class ChatEngine extends GameEngine {
   @override
   void addPlayer({required String id, required String name, required bool isHost}) {
     if (_players.length >= maxPlayers) {
-      throw StateError('Camera de chat e plină (maxim $maxPlayers persoane).');
+      throw GameError('err.chatFull', {'max': maxPlayers});
     }
     _players.add(_ChatPlayerInfo(id: id, name: name, isHost: isHost));
     started = true; // camera de chat e mereu deschisă, nu există un "start" separat
@@ -64,7 +65,7 @@ class ChatEngine extends GameEngine {
 
   @override
   void applyAction(String playerId, Map<String, dynamic> action) {
-    throw StateError('Camera de chat nu are acțiuni de joc.');
+    throw GameError('err.chatNoActions');
   }
 
   @override

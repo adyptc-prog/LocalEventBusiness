@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 
 import 'uno_card_widget.dart';
 import 'uno_snapshot.dart';
+import '../../l10n/tr.dart';
 
 class UnoOpponentWidget extends StatelessWidget {
   final UnoPlayerSummary player;
@@ -46,7 +47,7 @@ class UnoOpponentWidget extends StatelessWidget {
           const SizedBox(height: 4),
           const UnoCardBackWidget(width: 30),
           const SizedBox(height: 2),
-          Text('${player.handCount} cărți', style: const TextStyle(color: Colors.white70, fontSize: 12)),
+          Text(tr('game.cardsCount', {'n': player.handCount}), style: const TextStyle(color: Colors.white70, fontSize: 12)),
         ],
       ),
     );

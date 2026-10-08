@@ -3,6 +3,8 @@ import 'package:flutter/material.dart';
 import '../core/activity_catalog.dart';
 import '../core/event_config_store.dart';
 import '../network/event_server_runner.dart';
+import '../widgets/language_button.dart';
+import '../l10n/tr.dart';
 
 /// Ecran de organizator: alege ce activități apar în meniul invitaților
 /// pentru evenimentul curent. Salvează instant la fiecare comutare și
@@ -23,16 +25,16 @@ class _ActivityConfigScreenState extends State<ActivityConfigScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: const Color(0xFF101418),
-      appBar: AppBar(backgroundColor: Colors.black26, title: const Text('Activități')),
+      appBar: AppBar(backgroundColor: Colors.black26, title: Text(tr('mainMenu.activities')), actions: const [LanguageButton()]),
       body: SafeArea(
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
-            const Padding(
-              padding: EdgeInsets.fromLTRB(24, 16, 24, 8),
+            Padding(
+              padding: const EdgeInsets.fromLTRB(24, 16, 24, 8),
               child: Text(
-                'Alege ce vede un client în meniul lui.',
-                style: TextStyle(color: Colors.white54),
+                tr('activities.hint'),
+                style: const TextStyle(color: Colors.white54),
               ),
             ),
             Expanded(

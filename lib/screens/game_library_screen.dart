@@ -2,7 +2,9 @@ import 'package:flutter/material.dart';
 
 import '../core/game_definition.dart';
 import '../core/games_registry.dart';
+import '../widgets/language_button.dart';
 import 'room_browser_screen.dart';
+import '../l10n/tr.dart';
 
 /// Bibliotecă de jocuri locale multiplayer, filtrată la doar cele activate
 /// de organizator pentru evenimentul curent ([enabledGameIds] — vezi
@@ -25,22 +27,23 @@ class GameLibraryScreen extends StatelessWidget {
           icon: const Icon(Icons.arrow_back, color: Colors.white),
           onPressed: () => Navigator.of(context).pop(),
         ),
+        actions: const [LanguageButton()],
       ),
       body: SafeArea(
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
-            const Padding(
-              padding: EdgeInsets.fromLTRB(24, 0, 24, 8),
+            Padding(
+              padding: const EdgeInsets.fromLTRB(24, 0, 24, 8),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Icon(Icons.sports_esports, size: 48, color: Colors.white),
-                  SizedBox(height: 12),
-                  Text('Alege un joc',
-                      style: TextStyle(fontSize: 32, fontWeight: FontWeight.bold, color: Colors.white)),
-                  Text('multiplayer local, fără internet — pe același Wi-Fi sau hotspot',
-                      style: TextStyle(color: Colors.white54)),
+                  const Icon(Icons.sports_esports, size: 48, color: Colors.white),
+                  const SizedBox(height: 12),
+                  Text(tr('gameLibrary.title'),
+                      style: const TextStyle(fontSize: 32, fontWeight: FontWeight.bold, color: Colors.white)),
+                  Text(tr('mainMenu.tagline'),
+                      style: const TextStyle(color: Colors.white54)),
                 ],
               ),
             ),

@@ -10,6 +10,8 @@ import '../../widgets/playing_card_widget.dart';
 import 'rent_categories.dart';
 import 'rent_scoresheet_screen.dart';
 import 'rent_snapshot.dart';
+import '../../l10n/tr.dart';
+import '../../widgets/language_button.dart';
 
 class RentGameScreen extends StatefulWidget {
   final GameSessionArgs args;
@@ -59,12 +61,12 @@ class _RentGameScreenState extends State<RentGameScreen> {
     _winnerDialogShown = true;
     final isMe = _snapshot.winnerId == widget.args.myId;
     final myScore = _snapshot.cumulativeScores[widget.args.myId] ?? 0;
-    final title = _snapshot.isDraw ? 'Egalitate!' : (isMe ? 'Ai câștigat! 🎉' : 'Joc terminat');
+    final title = _snapshot.isDraw ? tr('game.draw') : (isMe ? tr('game.youWon') : tr('game.over'));
     final content = _snapshot.isDraw
-        ? 'Ai terminat la egalitate, cu $myScore puncte.'
+        ? tr('game.drawWithScore', {'score': myScore})
         : (isMe
-            ? 'Ai câștigat cu $myScore puncte.'
-            : '${_snapshot.winnerName(widget.args.myId) ?? 'Adversarul'} a câștigat. Tu ai terminat cu $myScore puncte.');
+            ? tr('game.wonWithScore', {'score': myScore})
+            : tr('game.theyWonYouScored', {'name': _snapshot.winnerName(widget.args.myId) ?? tr('war.opponentThe'), 'score': myScore}));
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (!mounted) return;
       showDialog(
@@ -78,7 +80,7 @@ class _RentGameScreenState extends State<RentGameScreen> {
               onPressed: () => Navigator.of(context).push(
                 MaterialPageRoute(builder: (context) => RentScoresheetScreen(snapshot: _snapshot, myId: widget.args.myId)),
               ),
-              child: const Text('Vezi tabelul'),
+              child: Text(tr('game.viewScoresheet')),
             ),
             TextButton(
               onPressed: () {
@@ -87,7 +89,7 @@ class _RentGameScreenState extends State<RentGameScreen> {
                   ..pop()
                   ..popUntil((route) => route.isFirst);
               },
-              child: const Text('Înapoi la meniu'),
+              child: Text(tr('game.backToMenu')),
             ),
           ],
         ),
@@ -114,7 +116,8 @@ class _RentGameScreenState extends State<RentGameScreen> {
   @override
   Widget build(BuildContext context) {
     final isMyTurn = _snapshot.isMyTurn(widget.args.myId);
-    final categoryLabel = _snapshot.activeCategory == null ? 'Alege categoria' : kRentCategoryLabels[_snapshot.activeCategory]!;
+    final activeCategory = _snapshot.activeCategory;
+    final categoryLabel = activeCategory == null ? tr('rent.chooseCategoryTitle') : rentCategoryLabel(activeCategory);
 
     return Scaffold(
       backgroundColor: const Color(0xFF3A1F1F),
@@ -124,14 +127,14 @@ class _RentGameScreenState extends State<RentGameScreen> {
         actions: [
           IconButton(
             icon: const Icon(Icons.table_chart),
-            tooltip: 'Tabel',
+            tooltip: tr('game.scoresheet'),
             onPressed: () => Navigator.of(context).push(
               MaterialPageRoute(builder: (context) => RentScoresheetScreen(snapshot: _snapshot, myId: widget.args.myId)),
             ),
           ),
           IconButton(
             icon: const Icon(Icons.leaderboard),
-            tooltip: 'Clasament și chat',
+            tooltip: tr('lobby.leaderboardAndChat'),
             onPressed: () => Navigator.of(context).push(
               MaterialPageRoute(
                 builder: (context) => LeaderboardScreen(
@@ -146,12 +149,13 @@ class _RentGameScreenState extends State<RentGameScreen> {
           ),
           IconButton(
             icon: const Icon(Icons.exit_to_app),
-            tooltip: 'Ieși din joc',
+            tooltip: tr('game.leave'),
             onPressed: () {
               widget.args.onLeave();
               Navigator.of(context).popUntil((route) => route.isFirst);
             },
           ),
+          const LanguageButton(),
         ],
       ),
       body: SafeArea(
@@ -165,7 +169,7 @@ class _RentGameScreenState extends State<RentGameScreen> {
                   : (_snapshot.isRentCategory ? _buildRentArea() : _buildTrickArea(isMyTurn)),
             ),
             if (!_snapshot.choosingCategory) ...[
-              Text('Tu', style: const TextStyle(color: Colors.white70, fontSize: 12)),
+              Text(tr('war.you'), style: const TextStyle(color: Colors.white70, fontSize: 12)),
               HandWidget(
                 cards: _snapshot.myHand,
                 isPlayable: (card) => isMyTurn && _snapshot.isCardPlayable(card),
@@ -198,8 +202,8 @@ class _RentGameScreenState extends State<RentGameScreen> {
               mainAxisSize: MainAxisSize.min,
               children: [
                 Text(p.name, style: const TextStyle(color: Colors.white, fontSize: 12, fontWeight: FontWeight.bold)),
-                Text('${p.handCount} cărți', style: const TextStyle(color: Colors.white70, fontSize: 11)),
-                Text('$score pct', style: const TextStyle(color: Colors.amberAccent, fontSize: 11)),
+                Text(tr('game.cardsCount', {'n': p.handCount}), style: const TextStyle(color: Colors.white70, fontSize: 11)),
+                Text(tr('leaderboard.points', {'n': score}), style: const TextStyle(color: Colors.amberAccent, fontSize: 11)),
               ],
             ),
           );
@@ -215,7 +219,7 @@ class _RentGameScreenState extends State<RentGameScreen> {
         mainAxisSize: MainAxisSize.min,
         children: [
           if (isMyChoice) ...[
-            const Text('Alege o categorie', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 16)),
+            Text(tr('rent.chooseCategory'), style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 16)),
             const SizedBox(height: 12),
             Wrap(
               alignment: WrapAlignment.center,
@@ -226,15 +230,15 @@ class _RentGameScreenState extends State<RentGameScreen> {
                   OutlinedButton(
                     style: OutlinedButton.styleFrom(foregroundColor: Colors.white, side: const BorderSide(color: Colors.white70)),
                     onPressed: () => _chooseCategory(c),
-                    child: Text(kRentCategoryLabels[c]!),
+                    child: Text(rentCategoryLabel(c)),
                   ),
               ],
             ),
           ] else
-            Text('${_nameOf(_snapshot.chooserId)} alege categoria...', style: const TextStyle(color: Colors.white70)),
+            Text(tr('rent.isChoosing', {'name': _nameOf(_snapshot.chooserId)}), style: const TextStyle(color: Colors.white70)),
           const SizedBox(height: 20),
           Text(
-            'Jucate: ${_snapshot.usedCategories.map((c) => kRentCategoryLabels[c]).join(', ').ifEmpty('—')}',
+            tr('rent.played', {'list': _snapshot.usedCategories.map((c) => rentCategoryLabel(c)).join(', ').ifEmpty('—')}),
             style: const TextStyle(color: Colors.white38, fontSize: 12),
             textAlign: TextAlign.center,
           ),
@@ -266,13 +270,13 @@ class _RentGameScreenState extends State<RentGameScreen> {
         if (_snapshot.currentTrick.isEmpty && _snapshot.lastTrickWinnerId != null)
           Padding(
             padding: const EdgeInsets.only(top: 12),
-            child: Text('${_nameOf(_snapshot.lastTrickWinnerId)} a luat levata',
+            child: Text(tr('whist.tookTrick', {'name': _nameOf(_snapshot.lastTrickWinnerId)}),
                 style: const TextStyle(color: Colors.amberAccent, fontWeight: FontWeight.bold)),
           ),
         if (!isMyTurn)
           Padding(
             padding: const EdgeInsets.only(top: 12),
-            child: Text('${_nameOf(_snapshot.currentPlayerId)} joacă...', style: const TextStyle(color: Colors.white54)),
+            child: Text(tr('game.isPlaying', {'name': _nameOf(_snapshot.currentPlayerId)}), style: const TextStyle(color: Colors.white54)),
           ),
       ],
     );
@@ -287,13 +291,13 @@ class _RentGameScreenState extends State<RentGameScreen> {
           const SizedBox(height: 12),
           if (_snapshot.rentFinishOrder.isNotEmpty)
             Text(
-              'Au terminat: ${_snapshot.rentFinishOrder.map(_nameOf).join(' > ')}',
+              tr('rent.finished', {'list': _snapshot.rentFinishOrder.map(_nameOf).join(' > ')}),
               style: const TextStyle(color: Colors.amberAccent, fontSize: 12),
               textAlign: TextAlign.center,
             ),
           const SizedBox(height: 8),
           if (_snapshot.currentPlayerId != null && _snapshot.currentPlayerId != widget.args.myId)
-            Text('${_nameOf(_snapshot.currentPlayerId)} joacă...', style: const TextStyle(color: Colors.white54)),
+            Text(tr('game.isPlaying', {'name': _nameOf(_snapshot.currentPlayerId)}), style: const TextStyle(color: Colors.white54)),
         ],
       ),
     );
@@ -309,7 +313,7 @@ class _RentGameScreenState extends State<RentGameScreen> {
           const SizedBox(width: 8),
           Expanded(
             child: cards.isEmpty
-                ? const Text('— nedeschisă —', style: TextStyle(color: Colors.white24))
+                ? Text(tr('rent.notOpened'), style: const TextStyle(color: Colors.white24))
                 : SingleChildScrollView(
                     scrollDirection: Axis.horizontal,
                     child: Row(children: cards.map((c) => PlayingCardWidget(card: c, width: 40)).toList()),

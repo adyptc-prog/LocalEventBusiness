@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import '../core/platform_support.dart';
+import '../widgets/language_button.dart';
 import '../widgets/menu_card.dart';
 import 'activity_config_screen.dart';
 import 'event_connect_screen.dart';
@@ -11,6 +12,7 @@ import 'orders_dashboard_screen.dart';
 import 'participants_screen.dart';
 import 'room_monitor_screen.dart';
 import 'tables_screen.dart';
+import '../l10n/tr.dart';
 
 /// Ecranul de start al aplicației. Butonul principal duce la conectarea la
 /// serverul localului curent — meniul de-acolo (`EventMenuScreen`) e dictat
@@ -33,22 +35,24 @@ class MainMenuScreen extends StatelessWidget {
               child: Row(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  const Expanded(
+                  Expanded(
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        Icon(Icons.hub, size: 48, color: Colors.white),
-                        SizedBox(height: 12),
-                        Text('LocalEventBusiness',
+                        const Icon(Icons.hub, size: 48, color: Colors.white),
+                        const SizedBox(height: 12),
+                        const Text('LocalEventBusiness',
                             style: TextStyle(fontSize: 32, fontWeight: FontWeight.bold, color: Colors.white)),
-                        Text('multiplayer local, fără internet — pe același Wi-Fi sau hotspot',
-                            style: TextStyle(color: Colors.white54)),
+                        Text(tr('mainMenu.tagline'),
+                            style: const TextStyle(color: Colors.white54)),
                       ],
                     ),
                   ),
+                  const LanguageButton(),
+                  const SizedBox(width: 4),
                   IconButton.filledTonal(
                     icon: const Icon(Icons.leaderboard),
-                    tooltip: 'Clasament',
+                    tooltip: tr('mainMenu.leaderboard'),
                     onPressed: () => Navigator.of(context).push(
                       MaterialPageRoute(builder: (context) => const LeaderboardScreen()),
                     ),
@@ -63,8 +67,8 @@ class MainMenuScreen extends StatelessWidget {
                   children: [
                     MenuCard(
                       icon: Icons.wifi,
-                      title: 'Intră la eveniment',
-                      subtitle: 'Conectează-te la serverul evenimentului curent și vezi ce activități sunt active.',
+                      title: tr('mainMenu.join.title'),
+                      subtitle: tr('mainMenu.join.subtitle'),
                       color: const Color(0xFF0B5E3B),
                       onTap: () => Navigator.of(context).push(
                         MaterialPageRoute(builder: (context) => const EventConnectScreen()),
@@ -74,8 +78,8 @@ class MainMenuScreen extends StatelessWidget {
                       const SizedBox(height: 20),
                       MenuCard(
                         icon: Icons.dns,
-                        title: 'Server local',
-                        subtitle: 'Pornește acest telefon ca server central — clienții își creează singuri conexiunea.',
+                        title: tr('mainMenu.server.title'),
+                        subtitle: tr('mainMenu.server.subtitle'),
                         color: const Color(0xFF3A2E0E),
                         onTap: () => Navigator.of(context).push(
                           MaterialPageRoute(builder: (context) => const EventServerScreen()),
@@ -84,8 +88,8 @@ class MainMenuScreen extends StatelessWidget {
                       const SizedBox(height: 12),
                       MenuCard(
                         icon: Icons.point_of_sale,
-                        title: 'Comenzi la bar',
-                        subtitle: 'Coada live de comenzi — avansează statusul fiecăreia.',
+                        title: tr('mainMenu.orders.title'),
+                        subtitle: tr('mainMenu.orders.subtitle'),
                         color: const Color(0xFF6B3F1D),
                         onTap: () => Navigator.of(context).push(
                           MaterialPageRoute(builder: (context) => const OrdersDashboardScreen()),
@@ -97,7 +101,7 @@ class MainMenuScreen extends StatelessWidget {
                           Expanded(
                             child: OutlinedButton.icon(
                               icon: const Icon(Icons.checklist),
-                              label: const Text('Activități'),
+                              label: Text(tr('mainMenu.activities')),
                               style: OutlinedButton.styleFrom(foregroundColor: Colors.white70, side: const BorderSide(color: Colors.white24)),
                               onPressed: () => Navigator.of(context).push(
                                 MaterialPageRoute(builder: (context) => const ActivityConfigScreen()),
@@ -108,7 +112,7 @@ class MainMenuScreen extends StatelessWidget {
                           Expanded(
                             child: OutlinedButton.icon(
                               icon: const Icon(Icons.restaurant_menu),
-                              label: const Text('Produse meniu'),
+                              label: Text(tr('mainMenu.menuProducts')),
                               style: OutlinedButton.styleFrom(foregroundColor: Colors.white70, side: const BorderSide(color: Colors.white24)),
                               onPressed: () => Navigator.of(context).push(
                                 MaterialPageRoute(builder: (context) => const MenuEditorScreen()),
@@ -122,7 +126,7 @@ class MainMenuScreen extends StatelessWidget {
                         width: double.infinity,
                         child: OutlinedButton.icon(
                           icon: const Icon(Icons.qr_code),
-                          label: const Text('Mese / cod QR'),
+                          label: Text(tr('mainMenu.tables')),
                           style: OutlinedButton.styleFrom(foregroundColor: Colors.white70, side: const BorderSide(color: Colors.white24)),
                           onPressed: () => Navigator.of(context).push(
                             MaterialPageRoute(builder: (context) => const TablesScreen()),
@@ -134,7 +138,7 @@ class MainMenuScreen extends StatelessWidget {
                         width: double.infinity,
                         child: OutlinedButton.icon(
                           icon: const Icon(Icons.people),
-                          label: const Text('Participanți'),
+                          label: Text(tr('mainMenu.participants')),
                           style: OutlinedButton.styleFrom(foregroundColor: Colors.white70, side: const BorderSide(color: Colors.white24)),
                           onPressed: () => Navigator.of(context).push(
                             MaterialPageRoute(builder: (context) => const ParticipantsScreen()),
@@ -146,7 +150,7 @@ class MainMenuScreen extends StatelessWidget {
                         width: double.infinity,
                         child: OutlinedButton.icon(
                           icon: const Icon(Icons.visibility),
-                          label: const Text('Monitorizează camere'),
+                          label: Text(tr('mainMenu.monitor')),
                           style: OutlinedButton.styleFrom(foregroundColor: Colors.white70, side: const BorderSide(color: Colors.white24)),
                           onPressed: () => Navigator.of(context).push(
                             MaterialPageRoute(builder: (context) => const RoomMonitorScreen()),

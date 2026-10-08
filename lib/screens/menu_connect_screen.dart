@@ -8,7 +8,9 @@ import '../games/menu/menu_definition.dart';
 import '../network/client_service.dart';
 import '../network/event_server_runner.dart';
 import '../network/event_server_service.dart';
+import '../widgets/language_button.dart';
 import 'lobby_screen.dart';
+import '../l10n/tr.dart';
 
 /// Punctul de intrare al clientului în activitatea „Meniu" — spre deosebire
 /// de `RoomBrowserScreen`, nu arată niciun ecran de creare/alăturare cameră:
@@ -79,7 +81,7 @@ class _MenuConnectScreenState extends State<MenuConnectScreen> {
       final profile = PlayerProfileStore.instance.profile;
       final myId = await _clientService.joinRoom(
         code: 'MENU',
-        name: profile.name.isEmpty ? 'Client' : profile.name,
+        name: profile.name.isEmpty ? tr('menuConnect.defaultName') : profile.name,
         profileId: profile.id,
         expectedGameId: 'menu',
       );
@@ -89,7 +91,7 @@ class _MenuConnectScreenState extends State<MenuConnectScreen> {
         MaterialPageRoute(
           builder: (context) => LobbyScreen(
             definition: menuDefinition,
-            roomName: 'Meniu',
+            roomName: tr('game.menu.title'),
             isHost: false,
             myId: myId,
             roomCode: _clientService.roomCode,
@@ -108,7 +110,7 @@ class _MenuConnectScreenState extends State<MenuConnectScreen> {
       if (!mounted) return;
       setState(() {
         _connecting = false;
-        _error = 'Nu m-am putut conecta: $e';
+        _error = tr('connect.failed', {'error': e});
       });
     }
   }
@@ -133,7 +135,7 @@ class _MenuConnectScreenState extends State<MenuConnectScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: const Color(0xFF6B3F1D),
-      appBar: AppBar(backgroundColor: Colors.black26, title: const Text('Meniu')),
+      appBar: AppBar(backgroundColor: Colors.black26, title: Text(tr('game.menu.title')), actions: const [LanguageButton()]),
       body: SafeArea(
         child: Padding(
           padding: const EdgeInsets.all(16),
@@ -164,30 +166,30 @@ class _MenuConnectScreenState extends State<MenuConnectScreen> {
 
   List<Widget> _buildWebSection() {
     return [
-      const Text(
-        'Un browser nu poate găsi serverul automat — dar fiindcă ai deschis această pagină direct de la el, adresa e deja completată mai jos.',
-        style: TextStyle(color: Colors.white54, fontSize: 12),
+      Text(
+        tr('connect.webHint'),
+        style: const TextStyle(color: Colors.white54, fontSize: 12),
       ),
       const SizedBox(height: 8),
       TextField(
         controller: _webAddressController,
         style: const TextStyle(color: Colors.white),
-        decoration: const InputDecoration(
-          hintText: 'ex: 192.168.43.1:45034',
-          hintStyle: TextStyle(color: Colors.white38),
+        decoration: InputDecoration(
+          hintText: tr('connect.webAddressHint'),
+          hintStyle: const TextStyle(color: Colors.white38),
           enabledBorder: UnderlineInputBorder(borderSide: BorderSide(color: Colors.white38)),
         ),
       ),
       const SizedBox(height: 16),
-      FilledButton(onPressed: _connectWebAddress, child: const Text('Conectează')),
+      FilledButton(onPressed: _connectWebAddress, child: Text(tr('common.connect'))),
     ];
   }
 
   List<Widget> _buildNativeSection() {
     return [
-      const Text(
-        'Conectează-te la același Wi-Fi sau hotspot ca serverul localului — apare automat aici.',
-        style: TextStyle(color: Colors.white54, fontSize: 12),
+      Text(
+        tr('menuConnect.nativeHint'),
+        style: const TextStyle(color: Colors.white54, fontSize: 12),
       ),
       const SizedBox(height: 8),
       if (_isServerHost)
@@ -195,15 +197,15 @@ class _MenuConnectScreenState extends State<MenuConnectScreen> {
           color: Colors.green.withValues(alpha: 0.15),
           child: ListTile(
             leading: const Icon(Icons.smartphone, color: Colors.lightGreenAccent),
-            title: const Text('Acest telefon (server local)'),
-            subtitle: const Text('Conectare directă, recomandat — nu depinde de router.'),
+            title: Text(tr('rooms.thisPhone')),
+            subtitle: Text(tr('rooms.thisPhoneHint')),
             onTap: () => _connect('127.0.0.1', EventServerService.webPort),
           ),
         ),
       _servers.isEmpty
-          ? const Padding(
-              padding: EdgeInsets.symmetric(vertical: 24),
-              child: Center(child: Text('Se caută serverul...', style: TextStyle(color: Colors.white38))),
+          ? Padding(
+              padding: const EdgeInsets.symmetric(vertical: 24),
+              child: Center(child: Text(tr('connect.searching'), style: const TextStyle(color: Colors.white38))),
             )
           : Column(
               children: _servers
@@ -219,7 +221,7 @@ class _MenuConnectScreenState extends State<MenuConnectScreen> {
             ),
       const Divider(color: Colors.white24),
       ExpansionTile(
-        title: const Text('Nu găsești serverul? Introdu IP-ul manual', style: TextStyle(color: Colors.white70)),
+        title: Text(tr('connect.manualIp'), style: const TextStyle(color: Colors.white70)),
         collapsedIconColor: Colors.white70,
         iconColor: Colors.white70,
         children: [
@@ -229,11 +231,11 @@ class _MenuConnectScreenState extends State<MenuConnectScreen> {
                 child: TextField(
                   controller: _manualHostController,
                   style: const TextStyle(color: Colors.white),
-                  decoration: const InputDecoration(hintText: 'ex: 192.168.43.1'),
+                  decoration: InputDecoration(hintText: tr('connect.ipHint')),
                 ),
               ),
               const SizedBox(width: 8),
-              FilledButton(onPressed: _connectManualHost, child: const Text('Conectează')),
+              FilledButton(onPressed: _connectManualHost, child: Text(tr('common.connect'))),
             ],
           ),
         ],

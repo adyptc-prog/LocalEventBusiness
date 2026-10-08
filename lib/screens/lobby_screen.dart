@@ -4,7 +4,9 @@ import 'package:flutter/material.dart';
 
 import '../core/chat_message.dart';
 import '../core/game_definition.dart';
+import '../widgets/language_button.dart';
 import 'leaderboard_screen.dart';
+import '../l10n/tr.dart';
 
 /// Cameră de așteptare, folosită identic de gazdă (după ce creează camera)
 /// și de clienți (după ce se alătură) — se transformă automat în ecranul de
@@ -125,7 +127,7 @@ class _LobbyScreenState extends State<LobbyScreen> {
           actions: [
             IconButton(
               icon: const Icon(Icons.leaderboard),
-              tooltip: 'Clasament și chat',
+              tooltip: tr('lobby.leaderboardAndChat'),
               onPressed: () => Navigator.of(context).push(
                 MaterialPageRoute(
                   builder: (context) => LeaderboardScreen(
@@ -138,6 +140,7 @@ class _LobbyScreenState extends State<LobbyScreen> {
                 ),
               ),
             ),
+            const LanguageButton(),
           ],
         ),
         body: SafeArea(
@@ -146,14 +149,14 @@ class _LobbyScreenState extends State<LobbyScreen> {
             child: Column(
               children: [
                 Text(
-                  widget.isHost ? 'Camera ta e deschisă altor invitați' : 'Conectat — se așteaptă gazda',
+                  widget.isHost ? tr('lobby.hostOpen') : tr('lobby.waitingHost'),
                   style: const TextStyle(color: Colors.white70),
                 ),
                 if (widget.isHost && widget.roomCode != null)
                   Padding(
                     padding: const EdgeInsets.only(top: 4),
                     child: Text(
-                      'Codul camerei: ${widget.roomCode} — orice invitat conectat la server îl poate folosi ca să se alăture direct.',
+                      tr('lobby.roomCode', {'code': widget.roomCode}),
                       textAlign: TextAlign.center,
                       style: const TextStyle(color: Colors.amberAccent, fontSize: 13, fontWeight: FontWeight.bold),
                     ),
@@ -161,7 +164,7 @@ class _LobbyScreenState extends State<LobbyScreen> {
                 if (tableStake > 0)
                   Padding(
                     padding: const EdgeInsets.only(top: 8),
-                    child: Text('Miza mesei: $tableStake puncte — câștigătorul o primește',
+                    child: Text(tr('lobby.stake', {'amount': tableStake}),
                         style: const TextStyle(color: Colors.amberAccent, fontWeight: FontWeight.bold)),
                   ),
                 const SizedBox(height: 16),
@@ -184,7 +187,7 @@ class _LobbyScreenState extends State<LobbyScreen> {
                 if (players.length < widget.definition.minPlayers)
                   Padding(
                     padding: const EdgeInsets.only(bottom: 8),
-                    child: Text('Sunt necesari minim ${widget.definition.minPlayers} jucători.',
+                    child: Text(tr('lobby.minPlayers', {'n': widget.definition.minPlayers}),
                         style: const TextStyle(color: Colors.white54)),
                   ),
                 if (widget.isHost)
@@ -192,11 +195,11 @@ class _LobbyScreenState extends State<LobbyScreen> {
                     width: double.infinity,
                     child: FilledButton(
                       onPressed: canStart ? widget.onStartGame : null,
-                      child: const Text('Începe jocul'),
+                      child: Text(tr('lobby.start')),
                     ),
                   )
                 else
-                  const Text('Doar gazda poate începe jocul.', style: TextStyle(color: Colors.white54)),
+                  Text(tr('lobby.onlyHost'), style: const TextStyle(color: Colors.white54)),
               ],
             ),
           ),

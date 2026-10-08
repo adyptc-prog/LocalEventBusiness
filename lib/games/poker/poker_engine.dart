@@ -4,6 +4,7 @@ import 'dart:math';
 import '../../core/game_engine.dart';
 import '../../models/card.dart';
 import 'poker_hand_evaluator.dart';
+import '../../l10n/tr.dart';
 
 class _PokerPlayerInfo {
   final String id;
@@ -30,15 +31,15 @@ class _Pot {
 class _ShowdownResult {
   final String playerId;
   final List<PlayingCard> cards;
-  final String handLabel;
+  final String handLabelKey;
   final int won;
 
-  const _ShowdownResult({required this.playerId, required this.cards, required this.handLabel, required this.won});
+  const _ShowdownResult({required this.playerId, required this.cards, required this.handLabelKey, required this.won});
 
   Map<String, dynamic> toJson() => {
         'playerId': playerId,
         'cards': cards.map((c) => c.toJson()).toList(),
-        'handLabel': handLabel,
+        'handLabel': LocalizedText(handLabelKey).toJson(),
         'won': won,
       };
 }
@@ -86,7 +87,7 @@ class PokerEngine extends GameEngine {
   /// Pauza dintre mâini (cât se vede rezultatul) — anulată la o pornire
   /// nouă, ca o mână programată din sesiunea veche să nu se suprapună.
   Timer? _nextHandTimer;
-  String? _lastHandSummary;
+  LocalizedText? _lastHandSummary;
 
   _PokerPlayerInfo _playerFor(String id) => _players.firstWhere((p) => p.id == id);
 
@@ -96,7 +97,7 @@ class PokerEngine extends GameEngine {
   @override
   void addPlayer({required String id, required String name, required bool isHost}) {
     if (_players.length >= maxPlayers) {
-      throw StateError('Camera este plină (maxim $maxPlayers jucători).');
+      throw GameError('err.roomFull', {'max': maxPlayers});
     }
     _players.add(_PokerPlayerInfo(id: id, name: name, isHost: isHost));
     notifyListeners();
@@ -120,9 +121,9 @@ class PokerEngine extends GameEngine {
 
   @override
   void startGame() {
-    if (started) throw StateError('Jocul e deja în desfășurare.');
+    if (started) throw GameError('err.alreadyStarted');
     if (_players.length < minPlayers || _players.length > maxPlayers) {
-      throw StateError('Sunt necesari $minPlayers-$maxPlayers jucători.');
+      throw GameError('err.playersRange', {'min': minPlayers, 'max': maxPlayers});
     }
     for (final p in _players) {
       p.chips = startingStack;
@@ -211,7 +212,7 @@ class PokerEngine extends GameEngine {
 
   @override
   void applyAction(String playerId, Map<String, dynamic> action) {
-    if (action['type'] != 'poker_action') throw StateError('Acțiune necunoscută.');
+    if (action['type'] != 'poker_action') throw GameError('err.unknownAction');
     switch (action['action']) {
       case 'fold':
         _fold(playerId);
@@ -229,13 +230,13 @@ class PokerEngine extends GameEngine {
         _allIn(playerId);
         break;
       default:
-        throw StateError('Acțiune necunoscută.');
+        throw GameError('err.unknownAction');
     }
   }
 
   void _requireTurn(String playerId) {
-    if (!started) throw StateError('Jocul nu este activ.');
-    if (currentPlayerId != playerId) throw StateError('Nu este rândul tău.');
+    if (!started) throw GameError('err.gameNotActive');
+    if (currentPlayerId != playerId) throw GameError('err.notYourTurn');
   }
 
   void _fold(String playerId) {
@@ -249,7 +250,7 @@ class PokerEngine extends GameEngine {
     _requireTurn(playerId);
     final p = _playerFor(playerId);
     if (p.betThisRound != _currentBet) {
-      throw StateError('Nu poți da check — trebuie să egalezi $_currentBet.');
+      throw GameError('err.poker.mustCall', {'amount': _currentBet});
     }
     _stillToAct.remove(playerId);
     _afterAction();
@@ -259,7 +260,7 @@ class PokerEngine extends GameEngine {
     _requireTurn(playerId);
     final p = _playerFor(playerId);
     final toCall = _currentBet - p.betThisRound;
-    if (toCall <= 0) throw StateError('Nu mai ai nimic de egalat — dă check.');
+    if (toCall <= 0) throw GameError('err.poker.nothingToCall');
     final pay = min(toCall, p.chips);
     p.chips -= pay;
     p.betThisRound += pay;
@@ -273,7 +274,7 @@ class PokerEngine extends GameEngine {
     _requireTurn(playerId);
     final p = _playerFor(playerId);
     if (amount < _currentBet + _minRaiseIncrement) {
-      throw StateError('Raise minim: ${_currentBet + _minRaiseIncrement}.');
+      throw GameError('err.poker.minRaise', {'amount': _currentBet + _minRaiseIncrement});
     }
     final need = amount - p.betThisRound;
     if (need >= p.chips) {
@@ -411,7 +412,7 @@ class PokerEngine extends GameEngine {
     final total = _actingOrder.fold<int>(0, (sum, id) => sum + _playerFor(id).betThisHand);
     _playerFor(playerId).chips += total;
     _lastShowdown = null;
-    _lastHandSummary = '${_playerFor(playerId).name} a câștigat $total puncte (ceilalți au renunțat)';
+    _lastHandSummary = LocalizedText('poker.summary.othersFolded', {'name': _playerFor(playerId).name, 'amount': total});
     _finishHand();
   }
 
@@ -446,7 +447,7 @@ class PokerEngine extends GameEngine {
         _ShowdownResult(
           playerId: id,
           cards: List.of(_playerFor(id).holeCards),
-          handLabel: scoresByPlayer[id]!.label,
+          handLabelKey: scoresByPlayer[id]!.labelKey,
           won: wonAmounts[id]!,
         ),
     ];
@@ -515,7 +516,7 @@ class PokerEngine extends GameEngine {
           ? _playerFor(viewerId).holeCards.map((c) => c.toJson()).toList()
           : const [],
       'lastShowdown': _lastShowdown?.map((r) => r.toJson()).toList(),
-      'lastHandSummary': _lastHandSummary,
+      'lastHandSummary': _lastHandSummary?.toJson(),
     };
   }
 }

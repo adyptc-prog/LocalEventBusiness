@@ -1,4 +1,5 @@
 import '../../models/card.dart';
+import '../../l10n/tr.dart';
 
 class PokerPlayerSummary {
   final String id;
@@ -39,7 +40,7 @@ class PokerPlayerSummary {
 class ShowdownEntry {
   final String playerId;
   final List<PlayingCard> cards;
-  final String handLabel;
+  final LocalizedText handLabel;
   final int won;
 
   const ShowdownEntry({required this.playerId, required this.cards, required this.handLabel, required this.won});
@@ -49,7 +50,7 @@ class ShowdownEntry {
         cards: (json['cards'] as List<dynamic>)
             .map((c) => PlayingCard.fromJson(c as Map<String, dynamic>))
             .toList(),
-        handLabel: json['handLabel'] as String,
+        handLabel: LocalizedText.fromJson(json['handLabel']) ?? const LocalizedText('poker.hand.highCard'),
         won: json['won'] as int,
       );
 }
@@ -70,7 +71,7 @@ class PokerSnapshot {
   final String? dealerId;
   final List<PlayingCard> myHoleCards;
   final List<ShowdownEntry>? lastShowdown;
-  final String? lastHandSummary;
+  final LocalizedText? lastHandSummary;
 
   const PokerSnapshot({
     required this.players,
@@ -124,6 +125,6 @@ class PokerSnapshot {
         lastShowdown: (json['lastShowdown'] as List<dynamic>?)
             ?.map((r) => ShowdownEntry.fromJson(r as Map<String, dynamic>))
             .toList(),
-        lastHandSummary: json['lastHandSummary'] as String?,
+        lastHandSummary: LocalizedText.fromJson(json['lastHandSummary']),
       );
 }

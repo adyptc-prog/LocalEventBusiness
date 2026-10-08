@@ -4,6 +4,7 @@ import '../../core/game_engine.dart';
 import '../../models/card.dart';
 import 'macao_player.dart';
 import 'macao_snapshot.dart';
+import '../../l10n/tr.dart';
 
 /// Motorul de reguli Macao — rulează exclusiv pe gazdă și este sursa unică
 /// de adevăr pentru starea jocului. Clienții primesc doar snapshot-uri JSON.
@@ -57,7 +58,7 @@ class MacaoEngine extends GameEngine {
   @override
   void addPlayer({required String id, required String name, required bool isHost}) {
     if (players.length >= maxPlayers) {
-      throw StateError('Camera este plină (maxim $maxPlayers jucători).');
+      throw GameError('err.roomFull', {'max': maxPlayers});
     }
     players.add(MacaoPlayer(id: id, name: name, isHost: isHost));
     notifyListeners();
@@ -87,8 +88,7 @@ class MacaoEngine extends GameEngine {
   @override
   void startGame() {
     if (!canStart) {
-      throw StateError(
-          'Nu se poate porni jocul (minim $minPlayers, maxim $maxPlayers jucători).');
+      throw GameError('err.cannotStart', {'min': minPlayers, 'max': maxPlayers});
     }
     final deck = PlayingCard.fullDeck()..shuffle(Random());
     _drawPile = deck;
@@ -121,7 +121,7 @@ class MacaoEngine extends GameEngine {
 
   MacaoPlayer _requirePlayer(String playerId) {
     final matches = players.where((p) => p.id == playerId);
-    if (matches.isEmpty) throw StateError('Jucător necunoscut.');
+    if (matches.isEmpty) throw GameError('err.unknownPlayer');
     return matches.first;
   }
 
@@ -157,7 +157,7 @@ class MacaoEngine extends GameEngine {
         _drawCard(playerId);
         break;
       default:
-        throw StateError('Acțiune necunoscută.');
+        throw GameError('err.unknownAction');
     }
   }
 
@@ -166,20 +166,20 @@ class MacaoEngine extends GameEngine {
   /// se leagă automat de ea, fiind la fel). Efectele cărților speciale
   /// (trageri, sărituri de tură) se adună pentru toate cărțile jucate.
   void _playCards(String playerId, List<PlayingCard> cards, {Suit? chosenSuit}) {
-    if (cards.isEmpty) throw StateError('Nicio carte de jucat.');
+    if (cards.isEmpty) throw GameError('err.noCardsToPlay');
     if (cards.any((c) => c.rank != cards.first.rank)) {
-      throw StateError('Poți juca simultan doar cărți de aceeași valoare.');
+      throw GameError('err.sameRankOnly');
     }
     if (!isValidPlay(playerId, cards.first)) {
-      throw StateError('Mutare invalidă.');
+      throw GameError('err.invalidMove');
     }
     if (cards.first.isWild && chosenSuit == null) {
-      throw StateError('Trebuie aleasă o culoare pentru această carte.');
+      throw GameError('err.mustChooseColor');
     }
 
     final player = _requirePlayer(playerId);
     for (final card in cards) {
-      if (!player.hand.contains(card)) throw StateError('Nu ai această carte.');
+      if (!player.hand.contains(card)) throw GameError('err.notYourCard');
     }
     for (final card in cards) {
       player.hand.remove(card);
@@ -237,8 +237,8 @@ class MacaoEngine extends GameEngine {
   int _handValue(List<PlayingCard> hand) => hand.fold(0, (sum, c) => sum + c.value);
 
   void _drawCard(String playerId) {
-    if (!started || winnerId != null) throw StateError('Jocul nu este activ.');
-    if (currentPlayer?.id != playerId) throw StateError('Nu este rândul tău.');
+    if (!started || winnerId != null) throw GameError('err.gameNotActive');
+    if (currentPlayer?.id != playerId) throw GameError('err.notYourTurn');
 
     // Nu are (sau nu vrea să joace) o carte de 4 — acceptă să stea pe loc
     // atâtea tururi cât s-a acumulat, fără să tragă nicio carte.
@@ -269,7 +269,7 @@ class MacaoEngine extends GameEngine {
   PlayingCard _drawFromPile() {
     if (_drawPile.isEmpty) {
       if (discardPile.length <= 1) {
-        throw StateError('Nu mai sunt cărți disponibile în pachet.');
+        throw GameError('err.deckEmpty');
       }
       final top = discardPile.removeLast();
       _drawPile = List.of(discardPile)..shuffle(Random());

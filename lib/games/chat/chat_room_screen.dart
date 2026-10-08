@@ -1,7 +1,10 @@
 import 'package:flutter/material.dart';
 
+import '../../widgets/language_button.dart';
+
 import '../../core/game_definition.dart';
 import '../../widgets/chat_panel.dart';
+import '../../l10n/tr.dart';
 
 /// Chat general — ecran plin, fără regulile unui joc, deschis oricui de pe
 /// rețea se alătură camerei de chat (nu doar celor de la o masă).
@@ -16,16 +19,17 @@ class ChatRoomScreen extends StatelessWidget {
       backgroundColor: const Color(0xFF0E2A47),
       appBar: AppBar(
         backgroundColor: const Color(0xFF091C31),
-        title: const Text('Chat general'),
+        title: Text(tr('game.chat.title')),
         actions: [
           IconButton(
             icon: const Icon(Icons.exit_to_app),
-            tooltip: 'Ieși din chat',
+            tooltip: tr('chat.leave'),
             onPressed: () {
               args.onLeave();
               Navigator.of(context).popUntil((route) => route.isFirst);
             },
           ),
+          const LanguageButton(),
         ],
       ),
       body: SafeArea(

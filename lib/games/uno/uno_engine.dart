@@ -3,6 +3,7 @@ import 'dart:math';
 import '../../core/game_engine.dart';
 import 'uno_card.dart';
 import 'uno_player.dart';
+import '../../l10n/tr.dart';
 
 /// Motorul de reguli UNO — rulează exclusiv pe gazdă, sursă unică de adevăr.
 /// Clienții primesc doar snapshot-uri JSON.
@@ -28,7 +29,7 @@ class UnoEngine extends GameEngine {
   UnoColor? activeColor;
   String? winnerId;
   bool hasDrawnThisTurn = false;
-  String? lastEventMessage;
+  LocalizedText? lastEventMessage;
 
   @override
   bool started = false;
@@ -47,7 +48,7 @@ class UnoEngine extends GameEngine {
   @override
   void addPlayer({required String id, required String name, required bool isHost}) {
     if (players.length >= maxPlayers) {
-      throw StateError('Camera este plină (maxim $maxPlayers jucători).');
+      throw GameError('err.roomFull', {'max': maxPlayers});
     }
     players.add(UnoPlayer(id: id, name: name, isHost: isHost));
     notifyListeners();
@@ -72,8 +73,7 @@ class UnoEngine extends GameEngine {
   @override
   void startGame() {
     if (!canStart) {
-      throw StateError(
-          'Nu se poate porni jocul (minim $minPlayers, maxim $maxPlayers jucători).');
+      throw GameError('err.cannotStart', {'min': minPlayers, 'max': maxPlayers});
     }
     final deck = UnoCard.fullDeck()..shuffle(Random());
     _drawPile = deck;
@@ -107,7 +107,7 @@ class UnoEngine extends GameEngine {
 
   UnoPlayer _requirePlayer(String playerId) {
     final matches = players.where((p) => p.id == playerId);
-    if (matches.isEmpty) throw StateError('Jucător necunoscut.');
+    if (matches.isEmpty) throw GameError('err.unknownPlayer');
     return matches.first;
   }
 
@@ -148,7 +148,7 @@ class UnoEngine extends GameEngine {
         _passTurn(playerId);
         break;
       default:
-        throw StateError('Acțiune necunoscută.');
+        throw GameError('err.unknownAction');
     }
   }
 
@@ -167,9 +167,9 @@ class UnoEngine extends GameEngine {
   }
 
   void _playCard(String playerId, UnoCard card, {UnoColor? chosenColor}) {
-    if (!isValidPlay(playerId, card)) throw StateError('Mutare invalidă.');
+    if (!isValidPlay(playerId, card)) throw GameError('err.invalidMove');
     if (card.isWild && chosenColor == null) {
-      throw StateError('Trebuie aleasă o culoare pentru această carte.');
+      throw GameError('err.mustChooseColor');
     }
 
     final player = _requirePlayer(playerId);
@@ -182,7 +182,7 @@ class UnoEngine extends GameEngine {
       winnerId = playerId;
       started = false;
       lastMatchScores = _computeMatchScores(playerId);
-      lastEventMessage = '${player.name} a terminat cărțile!';
+      lastEventMessage = LocalizedText('uno.event.finished', {'name': player.name});
       notifyListeners();
       return;
     }
@@ -195,7 +195,7 @@ class UnoEngine extends GameEngine {
         break;
       case UnoCardType.skip:
         activeColor = card.color;
-        lastEventMessage = '${_playerAt(1).name} a fost sărit.';
+        lastEventMessage = LocalizedText('uno.event.skipped', {'name': _playerAt(1).name});
         _advanceTurn(2);
         break;
       case UnoCardType.reverse:
@@ -203,10 +203,10 @@ class UnoEngine extends GameEngine {
         if (players.length == 2) {
           // La 2 jucători, Reverse se comportă ca un Skip: adversarul e
           // sărit și rândul rămâne tot la cel care a jucat cartea.
-          lastEventMessage = '${_playerAt(1).name} a fost sărit.';
+          lastEventMessage = LocalizedText('uno.event.skipped', {'name': _playerAt(1).name});
         } else {
           direction *= -1;
-          lastEventMessage = 'Sensul de joc s-a inversat.';
+          lastEventMessage = const LocalizedText('uno.event.reversed');
           _advanceTurn(1);
         }
         break;
@@ -217,7 +217,7 @@ class UnoEngine extends GameEngine {
           for (var i = 0; i < 2; i++) {
             target.hand.add(_drawFromPile());
           }
-          lastEventMessage = '${target.name} a tras 2 cărți și a fost sărit.';
+          lastEventMessage = LocalizedText('uno.event.drewTwo', {'name': target.name});
           _advanceTurn(2);
           break;
         }
@@ -233,7 +233,7 @@ class UnoEngine extends GameEngine {
           for (var i = 0; i < 4; i++) {
             target.hand.add(_drawFromPile());
           }
-          lastEventMessage = '${target.name} a tras 4 cărți și a fost sărit.';
+          lastEventMessage = LocalizedText('uno.event.drewFour', {'name': target.name});
           _advanceTurn(2);
           break;
         }
@@ -242,9 +242,9 @@ class UnoEngine extends GameEngine {
   }
 
   void _drawCard(String playerId) {
-    if (!started || winnerId != null) throw StateError('Jocul nu este activ.');
-    if (currentPlayer?.id != playerId) throw StateError('Nu este rândul tău.');
-    if (hasDrawnThisTurn) throw StateError('Ai tras deja o carte tura asta.');
+    if (!started || winnerId != null) throw GameError('err.gameNotActive');
+    if (currentPlayer?.id != playerId) throw GameError('err.notYourTurn');
+    if (hasDrawnThisTurn) throw GameError('err.uno.alreadyDrew');
     final player = _requirePlayer(playerId);
     player.hand.add(_drawFromPile());
     hasDrawnThisTurn = true;
@@ -253,11 +253,11 @@ class UnoEngine extends GameEngine {
   }
 
   void _passTurn(String playerId) {
-    if (!started || winnerId != null) throw StateError('Jocul nu este activ.');
-    if (currentPlayer?.id != playerId) throw StateError('Nu este rândul tău.');
+    if (!started || winnerId != null) throw GameError('err.gameNotActive');
+    if (currentPlayer?.id != playerId) throw GameError('err.notYourTurn');
     // Cu pachetul complet epuizat nu ai ce trage — poți trece direct,
     // altfel un jucător fără carte jucabilă ar bloca partida.
-    if (!hasDrawnThisTurn && _canDraw) throw StateError('Trebuie să tragi o carte înainte să treci tura.');
+    if (!hasDrawnThisTurn && _canDraw) throw GameError('err.uno.mustDrawFirst');
     hasDrawnThisTurn = false;
     _advanceTurn(1);
     notifyListeners();
@@ -270,7 +270,7 @@ class UnoEngine extends GameEngine {
   UnoCard _drawFromPile() {
     if (_drawPile.isEmpty) {
       if (discardPile.length <= 1) {
-        throw StateError('Nu mai sunt cărți disponibile în pachet.');
+        throw GameError('err.deckEmpty');
       }
       final top = discardPile.removeLast();
       _drawPile = List.of(discardPile)..shuffle(Random());
@@ -328,7 +328,7 @@ class UnoEngine extends GameEngine {
       'direction': direction,
       'currentPlayerId': currentPlayer?.id,
       'hasDrawnThisTurn': hasDrawnThisTurn,
-      'lastEventMessage': lastEventMessage,
+      'lastEventMessage': lastEventMessage?.toJson(),
     };
   }
 }

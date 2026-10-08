@@ -3,6 +3,7 @@ import 'dart:math';
 
 import 'package:shared_preferences/shared_preferences.dart';
 
+import '../l10n/tr.dart';
 import 'match_record.dart';
 import 'player_identity.dart';
 
@@ -56,7 +57,7 @@ class PlayerProfileStore {
       }
     }
     final id = generateSecretId();
-    final name = 'Jucător ${1000 + Random().nextInt(9000)}';
+    final name = tr('profile.defaultName', {'n': 1000 + Random().nextInt(9000)});
     profile = PlayerProfile(id: id, name: name, balance: _startingBalance);
     await _save();
   }

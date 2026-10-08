@@ -4,6 +4,8 @@ import 'package:flutter/material.dart';
 
 import '../core/order.dart';
 import '../network/event_server_runner.dart';
+import '../widgets/language_button.dart';
+import '../l10n/tr.dart';
 
 /// Ecran de barman: coada live de comenzi, pe același dispozitiv care
 /// rulează serverul — nu e un client WebSocket, ascultă direct
@@ -37,15 +39,15 @@ class _OrdersDashboardScreenState extends State<OrdersDashboardScreen> {
   }
 
   String _statusLabel(OrderStatus status) => switch (status) {
-        OrderStatus.placed => 'Nouă',
-        OrderStatus.preparing => 'În pregătire',
-        OrderStatus.ready => 'Gata',
-        OrderStatus.cancelled => 'Anulată',
+        OrderStatus.placed => tr('orders.status.placed'),
+        OrderStatus.preparing => tr('orders.status.preparing'),
+        OrderStatus.ready => tr('orders.status.ready'),
+        OrderStatus.cancelled => tr('orders.status.cancelled'),
       };
 
   String? _nextActionLabel(OrderStatus status) => switch (status) {
-        OrderStatus.placed => 'Începe pregătirea',
-        OrderStatus.preparing => 'Marchează gata',
+        OrderStatus.placed => tr('orders.startPreparing'),
+        OrderStatus.preparing => tr('orders.markReady'),
         OrderStatus.ready => null,
         OrderStatus.cancelled => null,
       };
@@ -64,19 +66,19 @@ class _OrdersDashboardScreenState extends State<OrdersDashboardScreen> {
 
     return Scaffold(
       backgroundColor: const Color(0xFF101418),
-      appBar: AppBar(backgroundColor: Colors.black26, title: const Text('Comenzi la bar')),
+      appBar: AppBar(backgroundColor: Colors.black26, title: Text(tr('mainMenu.orders.title')), actions: const [LanguageButton()]),
       body: SafeArea(
         child: _orders.isEmpty
-            ? const Center(child: Text('Nicio comandă încă.', style: TextStyle(color: Colors.white38)))
+            ? Center(child: Text(tr('orders.none'), style: const TextStyle(color: Colors.white38)))
             : ListView(
                 padding: const EdgeInsets.all(16),
                 children: [
-                  Text('În lucru (${active.length})', style: const TextStyle(color: Colors.white70, fontWeight: FontWeight.bold)),
+                  Text(tr('orders.inProgress', {'n': active.length}), style: const TextStyle(color: Colors.white70, fontWeight: FontWeight.bold)),
                   const SizedBox(height: 8),
                   for (final order in active) _buildOrderCard(order),
                   if (ready.isNotEmpty) ...[
                     const SizedBox(height: 24),
-                    Text('Gata de livrat (${ready.length})', style: const TextStyle(color: Colors.white70, fontWeight: FontWeight.bold)),
+                    Text(tr('orders.readyToServe', {'n': ready.length}), style: const TextStyle(color: Colors.white70, fontWeight: FontWeight.bold)),
                     const SizedBox(height: 8),
                     for (final order in ready) _buildOrderCard(order),
                   ],
@@ -99,7 +101,7 @@ class _OrdersDashboardScreenState extends State<OrdersDashboardScreen> {
             Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
-                Text('Masa ${order.tableLabel}', style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 16)),
+                Text(tr('orders.table', {'table': order.tableLabel}), style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 16)),
                 Text(_statusLabel(order.status), style: TextStyle(color: _statusColor(order.status), fontWeight: FontWeight.bold)),
               ],
             ),
@@ -108,7 +110,7 @@ class _OrdersDashboardScreenState extends State<OrdersDashboardScreen> {
             const SizedBox(height: 8),
             for (final line in order.lines)
               Text('${line.quantity}x ${line.name}', style: const TextStyle(color: Colors.white)),
-            if (order.note != null) Text('Notă: ${order.note}', style: const TextStyle(color: Colors.amberAccent)),
+            if (order.note != null) Text(tr('orders.note', {'note': order.note}), style: const TextStyle(color: Colors.amberAccent)),
             const SizedBox(height: 12),
             Row(
               children: [
@@ -124,7 +126,7 @@ class _OrdersDashboardScreenState extends State<OrdersDashboardScreen> {
                   OutlinedButton(
                     onPressed: () => EventServerRunner.cancelOrder(order.id),
                     style: OutlinedButton.styleFrom(foregroundColor: Colors.redAccent, side: const BorderSide(color: Colors.redAccent)),
-                    child: const Text('Anulează'),
+                    child: Text(tr('orders.cancel')),
                   ),
                 ],
               ],

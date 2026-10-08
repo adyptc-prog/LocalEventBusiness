@@ -6,6 +6,8 @@ import 'package:image_picker/image_picker.dart';
 import '../core/menu_item.dart';
 import '../core/menu_store.dart';
 import '../network/event_server_runner.dart';
+import '../widgets/language_button.dart';
+import '../l10n/tr.dart';
 
 /// Ecran de organizator: categoriile și produsele sunt libere — fiecare
 /// local își denumește categoriile cum vrea, produsele au poză opțională
@@ -26,7 +28,7 @@ class _MenuEditorScreenState extends State<MenuEditorScreen> {
 
   Future<void> _addCategory() async {
     final controller = TextEditingController();
-    final name = await _promptText(context, title: 'Categorie nouă', controller: controller);
+    final name = await _promptText(context, title: tr('menuEditor.newCategory'), controller: controller);
     if (name == null || name.isEmpty) return;
     await MenuStore.instance.addCategory(name);
     _sync();
@@ -35,7 +37,7 @@ class _MenuEditorScreenState extends State<MenuEditorScreen> {
 
   Future<void> _renameCategory(MenuCategory category) async {
     final controller = TextEditingController(text: category.name);
-    final name = await _promptText(context, title: 'Redenumește categoria', controller: controller);
+    final name = await _promptText(context, title: tr('menuEditor.renameCategory'), controller: controller);
     if (name == null || name.isEmpty) return;
     await MenuStore.instance.renameCategory(category.id, name);
     _sync();
@@ -43,7 +45,7 @@ class _MenuEditorScreenState extends State<MenuEditorScreen> {
   }
 
   Future<void> _removeCategory(MenuCategory category) async {
-    if (!await _confirm(context, 'Ștergi „${category.name}"?', 'Se șterg și produsele din ea.')) return;
+    if (!await _confirm(context, tr('menuEditor.deleteTitle', {'name': category.name}), tr('menuEditor.deleteCategoryBody'))) return;
     await MenuStore.instance.removeCategory(category.id);
     _sync();
     setState(() {});
@@ -92,7 +94,7 @@ class _MenuEditorScreenState extends State<MenuEditorScreen> {
   }
 
   Future<void> _removeItem(MenuItem item) async {
-    if (!await _confirm(context, 'Ștergi „${item.name}"?', 'Nu mai poate fi comandat.')) return;
+    if (!await _confirm(context, tr('menuEditor.deleteTitle', {'name': item.name}), tr('menuEditor.deleteItemBody'))) return;
     await MenuStore.instance.removeItem(item.id);
     _sync();
     setState(() {});
@@ -107,18 +109,21 @@ class _MenuEditorScreenState extends State<MenuEditorScreen> {
       backgroundColor: const Color(0xFF101418),
       appBar: AppBar(
         backgroundColor: Colors.black26,
-        title: const Text('Produse meniu'),
-        actions: [IconButton(icon: const Icon(Icons.add), tooltip: 'Categorie nouă', onPressed: _addCategory)],
+        title: Text(tr('mainMenu.menuProducts')),
+        actions: [
+          IconButton(icon: const Icon(Icons.add), tooltip: tr('menuEditor.newCategory'), onPressed: _addCategory),
+          const LanguageButton(),
+        ],
       ),
       body: SafeArea(
         child: categories.isEmpty
-            ? const Center(
+            ? Center(
                 child: Padding(
-                  padding: EdgeInsets.all(24),
+                  padding: const EdgeInsets.all(24),
                   child: Text(
-                    'Adaugă prima categorie (ex: „Băuturi calde") cu butonul + de sus.',
+                    tr('menuEditor.empty'),
                     textAlign: TextAlign.center,
-                    style: TextStyle(color: Colors.white54),
+                    style: const TextStyle(color: Colors.white54),
                   ),
                 ),
               )
@@ -138,7 +143,7 @@ class _MenuEditorScreenState extends State<MenuEditorScreen> {
                     for (final item in items.where((i) => i.categoryId == category.id)) _buildItemTile(item),
                     OutlinedButton.icon(
                       icon: const Icon(Icons.add),
-                      label: const Text('Produs nou'),
+                      label: Text(tr('menuEditor.newItem')),
                       style: OutlinedButton.styleFrom(foregroundColor: Colors.white70, side: const BorderSide(color: Colors.white24)),
                       onPressed: () => _addItem(category),
                     ),
@@ -178,8 +183,8 @@ Future<String?> _promptText(BuildContext context, {required String title, requir
       title: Text(title),
       content: TextField(controller: controller, autofocus: true),
       actions: [
-        TextButton(onPressed: () => Navigator.of(context).pop(), child: const Text('Renunță')),
-        FilledButton(onPressed: () => Navigator.of(context).pop(controller.text.trim()), child: const Text('Salvează')),
+        TextButton(onPressed: () => Navigator.of(context).pop(), child: Text(tr('common.cancel'))),
+        FilledButton(onPressed: () => Navigator.of(context).pop(controller.text.trim()), child: Text(tr('common.save'))),
       ],
     ),
   );
@@ -192,8 +197,8 @@ Future<bool> _confirm(BuildContext context, String title, String content) async 
       title: Text(title),
       content: Text(content),
       actions: [
-        TextButton(onPressed: () => Navigator.of(context).pop(false), child: const Text('Renunță')),
-        TextButton(onPressed: () => Navigator.of(context).pop(true), child: const Text('Șterge')),
+        TextButton(onPressed: () => Navigator.of(context).pop(false), child: Text(tr('common.cancel'))),
+        TextButton(onPressed: () => Navigator.of(context).pop(true), child: Text(tr('common.delete'))),
       ],
     ),
   );
@@ -245,33 +250,33 @@ class _ItemEditorSheetState extends State<_ItemEditorSheet> {
           mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
-            Text(widget.existing == null ? 'Produs nou' : 'Editează produsul',
+            Text(widget.existing == null ? tr('menuEditor.newItem') : tr('menuEditor.editItem'),
                 style: const TextStyle(color: Colors.white, fontSize: 18, fontWeight: FontWeight.bold)),
             const SizedBox(height: 16),
             TextFormField(
               controller: _nameController,
               style: const TextStyle(color: Colors.white),
-              decoration: const InputDecoration(labelText: 'Nume produs', labelStyle: TextStyle(color: Colors.white70)),
-              validator: (v) => (v == null || v.trim().isEmpty) ? 'Introdu un nume' : null,
+              decoration: InputDecoration(labelText: tr('menuEditor.itemName'), labelStyle: const TextStyle(color: Colors.white70)),
+              validator: (v) => (v == null || v.trim().isEmpty) ? tr('rooms.enterAName') : null,
             ),
             const SizedBox(height: 12),
             TextFormField(
               controller: _descController,
               style: const TextStyle(color: Colors.white),
-              decoration: const InputDecoration(labelText: 'Descriere (opțional)', labelStyle: TextStyle(color: Colors.white70)),
+              decoration: InputDecoration(labelText: tr('menuEditor.description'), labelStyle: const TextStyle(color: Colors.white70)),
             ),
             const SizedBox(height: 16),
             Row(
               children: [
                 OutlinedButton.icon(
                   icon: const Icon(Icons.photo_library),
-                  label: const Text('Din galerie'),
+                  label: Text(tr('menuEditor.fromGallery')),
                   onPressed: () => _pickPhoto(ImageSource.gallery),
                 ),
                 const SizedBox(width: 8),
                 OutlinedButton.icon(
                   icon: const Icon(Icons.camera_alt),
-                  label: const Text('Cameră'),
+                  label: Text(tr('menuEditor.camera')),
                   onPressed: () => _pickPhoto(ImageSource.camera),
                 ),
               ],
@@ -281,7 +286,7 @@ class _ItemEditorSheetState extends State<_ItemEditorSheet> {
                 padding: const EdgeInsets.only(top: 8),
                 child: TextButton.icon(
                   icon: const Icon(Icons.delete, color: Colors.redAccent),
-                  label: const Text('Șterge poza', style: TextStyle(color: Colors.redAccent)),
+                  label: Text(tr('menuEditor.deletePhoto'), style: const TextStyle(color: Colors.redAccent)),
                   onPressed: () => setState(() {
                     _newPhotoBytes = null;
                     _removePhoto = true;
@@ -299,7 +304,7 @@ class _ItemEditorSheetState extends State<_ItemEditorSheet> {
                   removePhoto: _removePhoto,
                 ));
               },
-              child: const Text('Salvează'),
+              child: Text(tr('common.save')),
             ),
           ],
         ),

@@ -5,6 +5,8 @@ import '../core/games_registry.dart';
 import '../core/leaderboard_store.dart';
 import '../core/player_profile.dart';
 import '../widgets/chat_panel.dart';
+import '../widgets/language_button.dart';
+import '../l10n/tr.dart';
 
 /// Clasament + chat. Fără parametri live (`myId`/`stateStream`/...): arată
 /// doar istoricul persistat pe acest telefon (folosit din meniul principal,
@@ -57,14 +59,15 @@ class _LeaderboardScreenState extends State<LeaderboardScreen> with SingleTicker
       backgroundColor: const Color(0xFF101418),
       appBar: AppBar(
         backgroundColor: Colors.black26,
-        title: const Text('Clasament'),
+        title: Text(tr('mainMenu.leaderboard')),
+        actions: const [LanguageButton()],
         bottom: TabBar(
           controller: _tabController,
           isScrollable: true,
           tabs: [
-            const Tab(text: 'General'),
+            Tab(text: tr('leaderboard.overall')),
             for (final def in availableGames) Tab(text: def.title),
-            if (_hasLiveSession) const Tab(icon: Icon(Icons.chat_bubble_outline), text: 'Chat'),
+            if (_hasLiveSession) Tab(icon: const Icon(Icons.chat_bubble_outline), text: tr('leaderboard.chat')),
           ],
         ),
       ),
@@ -111,11 +114,11 @@ class _ProfileHeader extends StatelessWidget {
             child: TextField(
               controller: nameController,
               style: const TextStyle(color: Colors.white),
-              decoration: const InputDecoration(
+              decoration: InputDecoration(
                 isDense: true,
-                labelText: 'Numele tău',
-                labelStyle: TextStyle(color: Colors.white54),
-                enabledBorder: UnderlineInputBorder(borderSide: BorderSide(color: Colors.white24)),
+                labelText: tr('rooms.yourName'),
+                labelStyle: const TextStyle(color: Colors.white54),
+                enabledBorder: const UnderlineInputBorder(borderSide: BorderSide(color: Colors.white24)),
               ),
               onSubmitted: (v) => PlayerProfileStore.instance.updateName(v),
               onTapOutside: (_) => PlayerProfileStore.instance.updateName(nameController.text),
@@ -125,7 +128,7 @@ class _ProfileHeader extends StatelessWidget {
           Column(
             crossAxisAlignment: CrossAxisAlignment.end,
             children: [
-              const Text('Sold', style: TextStyle(color: Colors.white38, fontSize: 11)),
+              Text(tr('leaderboard.balance'), style: const TextStyle(color: Colors.white38, fontSize: 11)),
               Text('${PlayerProfileStore.instance.profile.balance}',
                   style: const TextStyle(color: Colors.amberAccent, fontWeight: FontWeight.bold, fontSize: 16)),
             ],
@@ -148,9 +151,9 @@ class _RankingList extends StatelessWidget {
       builder: (context, _) {
         final rankings = LeaderboardStore.instance.rankingsFor(gameId: gameId);
         if (rankings.isEmpty) {
-          return const Center(
-            child: Text('Nicio partidă înregistrată încă pe acest telefon.',
-                textAlign: TextAlign.center, style: TextStyle(color: Colors.white38)),
+          return Center(
+            child: Text(tr('leaderboard.empty'),
+                textAlign: TextAlign.center, style: const TextStyle(color: Colors.white38)),
           );
         }
         return ListView.separated(
@@ -179,7 +182,7 @@ class _RankingList extends StatelessWidget {
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         Text(r.playerName, style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w600)),
-                        Text('${r.matchesPlayed} partide · ${r.wins} victorii',
+                        Text(tr('leaderboard.record', {'matches': r.matchesPlayed, 'wins': r.wins}),
                             style: const TextStyle(color: Colors.white38, fontSize: 12)),
                       ],
                     ),
@@ -187,10 +190,10 @@ class _RankingList extends StatelessWidget {
                   Column(
                     crossAxisAlignment: CrossAxisAlignment.end,
                     children: [
-                      Text('${r.totalScore} pct',
+                      Text(tr('leaderboard.points', {'n': r.totalScore}),
                           style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
                       if (r.stakeBalance != 0)
-                        Text(r.stakeBalance > 0 ? '+${r.stakeBalance} miză' : '${r.stakeBalance} miză',
+                        Text(tr('leaderboard.stake', {'n': r.stakeBalance > 0 ? '+${r.stakeBalance}' : '${r.stakeBalance}'}),
                             style: TextStyle(
                                 color: r.stakeBalance > 0 ? Colors.lightGreenAccent : Colors.orangeAccent,
                                 fontSize: 12)),

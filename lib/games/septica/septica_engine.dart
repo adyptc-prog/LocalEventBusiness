@@ -2,6 +2,7 @@ import 'dart:math';
 
 import '../../core/game_engine.dart';
 import '../../models/card.dart';
+import '../../l10n/tr.dart';
 
 class _SepticaPlayerInfo {
   final String id;
@@ -77,7 +78,7 @@ class SepticaEngine extends GameEngine {
   @override
   void addPlayer({required String id, required String name, required bool isHost}) {
     if (_players.length >= maxPlayers) {
-      throw StateError('Camera este plină (maxim $maxPlayers jucători).');
+      throw GameError('err.roomFull', {'max': maxPlayers});
     }
     _players.add(_SepticaPlayerInfo(id: id, name: name, isHost: isHost));
     notifyListeners();
@@ -102,8 +103,7 @@ class SepticaEngine extends GameEngine {
   @override
   void startGame() {
     if (!canStart) {
-      throw StateError(
-          'Nu se poate porni jocul (minim $minPlayers, maxim $maxPlayers jucători).');
+      throw GameError('err.cannotStart', {'min': minPlayers, 'max': maxPlayers});
     }
     _wildRanks = {Rank.seven};
     _drawPile = [
@@ -184,17 +184,17 @@ class SepticaEngine extends GameEngine {
         _concede(playerId);
         break;
       default:
-        throw StateError('Acțiune necunoscută.');
+        throw GameError('err.unknownAction');
     }
   }
 
   bool _qualifies(PlayingCard card) => card.rank == _contestedRank || _wildRanks.contains(card.rank);
 
   void _playCard(String playerId, PlayingCard card) {
-    if (!started || winnerId != null || isDraw) throw StateError('Jocul nu este activ.');
-    if (currentPlayerId != playerId) throw StateError('Nu este rândul tău.');
+    if (!started || winnerId != null || isDraw) throw GameError('err.gameNotActive');
+    if (currentPlayerId != playerId) throw GameError('err.notYourTurn');
     final hand = _hands[playerId]!;
-    if (!hand.contains(card)) throw StateError('Nu ai această carte.');
+    if (!hand.contains(card)) throw GameError('err.notYourCard');
 
     if (_table.isEmpty) {
       // Conducătorul deschide o rundă nouă — orice carte, fără restricție.
@@ -216,7 +216,7 @@ class SepticaEngine extends GameEngine {
     if (_awaitingLeaderDecision) {
       // Conducătorul continuă lupta — obligatoriu o carte care se leagă.
       if (!_qualifies(card)) {
-        throw StateError('Trebuie o carte cu numărul din luptă sau o tăietură, ca să continui.');
+        throw GameError('err.septica.mustMatch');
       }
       hand.remove(card);
       _table.add(card);
@@ -254,9 +254,9 @@ class SepticaEngine extends GameEngine {
   }
 
   void _concede(String playerId) {
-    if (!started || winnerId != null || isDraw) throw StateError('Jocul nu este activ.');
-    if (!_awaitingLeaderDecision) throw StateError('Nu poți renunța acum.');
-    if (playerId != _leaderId) throw StateError('Doar conducătorul poate renunța la luptă.');
+    if (!started || winnerId != null || isDraw) throw GameError('err.gameNotActive');
+    if (!_awaitingLeaderDecision) throw GameError('err.septica.cannotConcede');
+    if (playerId != _leaderId) throw GameError('err.septica.onlyLeaderConcedes');
     _resolveCapture(_challengerId!);
     notifyListeners();
   }

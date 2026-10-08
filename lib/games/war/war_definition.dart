@@ -6,8 +6,6 @@ import 'war_game_screen.dart';
 
 final GameDefinition warDefinition = GameDefinition(
   id: 'war',
-  title: 'Război',
-  subtitle: 'Fiecare întoarce câte o carte — cea mai mare le ia pe amândouă.',
   icon: Icons.flash_on,
   accentColor: const Color(0xFF1B2A4A),
   minPlayers: WarEngine.minPlayersStatic,

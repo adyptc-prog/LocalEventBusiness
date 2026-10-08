@@ -18,26 +18,28 @@ class HandScore implements Comparable<HandScore> {
     return 0;
   }
 
-  String get label {
+  /// Cheia de traducere a numelui combinației (vezi `lib/l10n`) — textul
+  /// final îl alege fiecare client, în limba lui.
+  String get labelKey {
     switch (category) {
       case 8:
-        return tiebreakers.first == 14 ? 'Chintă royală' : 'Chintă culoare';
+        return tiebreakers.first == 14 ? 'poker.hand.royalFlush' : 'poker.hand.straightFlush';
       case 7:
-        return 'Careu';
+        return 'poker.hand.fourOfAKind';
       case 6:
-        return 'Full';
+        return 'poker.hand.fullHouse';
       case 5:
-        return 'Culoare';
+        return 'poker.hand.flush';
       case 4:
-        return 'Chintă';
+        return 'poker.hand.straight';
       case 3:
-        return 'Trei la fel';
+        return 'poker.hand.threeOfAKind';
       case 2:
-        return 'Două perechi';
+        return 'poker.hand.twoPair';
       case 1:
-        return 'Pereche';
+        return 'poker.hand.pair';
       default:
-        return 'Cartea mare';
+        return 'poker.hand.highCard';
     }
   }
 }

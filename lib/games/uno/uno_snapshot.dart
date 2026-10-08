@@ -1,4 +1,5 @@
 import 'uno_card.dart';
+import '../../l10n/tr.dart';
 
 class UnoPlayerSummary {
   final String id;
@@ -38,7 +39,7 @@ class UnoSnapshot {
   final int direction;
   final String? currentPlayerId;
   final bool hasDrawnThisTurn;
-  final String? lastEventMessage;
+  final LocalizedText? lastEventMessage;
 
   const UnoSnapshot({
     required this.viewerId,
@@ -101,6 +102,6 @@ class UnoSnapshot {
         direction: json['direction'] as int? ?? 1,
         currentPlayerId: json['currentPlayerId'] as String?,
         hasDrawnThisTurn: json['hasDrawnThisTurn'] as bool? ?? false,
-        lastEventMessage: json['lastEventMessage'] as String?,
+        lastEventMessage: LocalizedText.fromJson(json['lastEventMessage']),
       );
 }

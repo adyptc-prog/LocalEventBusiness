@@ -26,6 +26,7 @@ import 'lobby_room.dart';
 import 'participant_info.dart';
 import 'room_session.dart';
 import 'web_asset_bundle.dart';
+import '../l10n/tr.dart';
 
 /// Codul fix al camerei singleton de comenzi — creată automat la pornirea
 /// serverului (nu la cererea unui client, ca la restul activităților), ca
@@ -350,7 +351,7 @@ class EventServerService {
   @visibleForTesting
   void acceptClient(WebSocketChannel channel) {
     if (_connections.length >= maxConnections) {
-      channel.sink.add(GameMessage.encode({'type': 'error', 'message': 'Serverul e plin — încearcă puțin mai târziu.'}));
+      _sendError(channel, 'err.serverFull');
       channel.sink.close();
       return;
     }
@@ -382,6 +383,26 @@ class EventServerService {
       onDone: () => _handleDisconnect(channel, state),
       onError: (_) => _handleDisconnect(channel, state),
     );
+  }
+
+  /// Trimite o eroare traductibilă: clientul o afișează în limba lui din
+  /// `messageKey`/`messageArgs`; `message` (în română) rămâne pentru
+  /// clienții vechi, care nu știu de chei.
+  static void _sendError(WebSocketChannel channel, String key, [Map<String, Object?> args = const {}]) {
+    channel.sink.add(GameMessage.encode({
+      'type': 'error',
+      'message': trIn(AppLanguage.ro, key, args),
+      'messageKey': key,
+      if (args.isNotEmpty) 'messageArgs': args,
+    }));
+  }
+
+  static void _sendException(WebSocketChannel channel, Object e) {
+    if (e is GameError) {
+      _sendError(channel, e.key, e.args);
+    } else {
+      _sendError(channel, 'err.invalidAction');
+    }
   }
 
   /// Citește un câmp text dintr-un mesaj de client — `null` dacă lipsește
@@ -428,26 +449,26 @@ class EventServerService {
       try {
         room.startGame(playerId);
       } catch (e) {
-        channel.sink.add(GameMessage.encode({'type': 'error', 'message': e.toString()}));
+        _sendException(channel, e);
       }
     } else if (type == 'action') {
       try {
         final rawAction = msg['action'];
-        if (rawAction is! Map) throw StateError('Acțiune invalidă.');
+        if (rawAction is! Map) throw GameError('err.invalidAction');
         final action = Map<String, dynamic>.from(rawAction);
         room.applyAction(playerId, action);
       } catch (e) {
-        channel.sink.add(GameMessage.encode({'type': 'error', 'message': e.toString()}));
+        _sendException(channel, e);
       }
     } else if (type == 'chat') {
       final text = _readString(msg, 'text')?.trim();
       if (text == null || text.isEmpty) return;
       if (text.length > maxChatLength) {
-        channel.sink.add(GameMessage.encode({'type': 'error', 'message': 'Mesajul e prea lung (maxim $maxChatLength caractere).'}));
+        _sendError(channel, 'err.chatTooLong', {'max': maxChatLength});
         return;
       }
       if (MutedUsersStore.instance.isMuted(playerId)) {
-        channel.sink.add(GameMessage.encode({'type': 'error', 'message': 'Chat-ul tău a fost oprit de organizator.'}));
+        _sendError(channel, 'err.muted');
         return;
       }
       final toId = _readString(msg, 'to');
@@ -466,13 +487,13 @@ class EventServerService {
     // Spectatorul scrie în chat ca „Organizator" — deci doar cine are cheia
     // organizatorului (păstrată pe telefonul-server) poate fi spectator.
     if (!OrganizerKeyStore.instance.matches(msg['organizerKey'])) {
-      channel.sink.add(GameMessage.encode({'type': 'error', 'message': 'Doar organizatorul poate monitoriza camere.'}));
+      _sendError(channel, 'err.organizerOnly');
       return;
     }
     final code = _readString(msg, 'code')?.trim().toUpperCase();
     final room = code == null ? null : _rooms[code];
     if (room == null) {
-      channel.sink.add(GameMessage.encode({'type': 'error', 'message': 'Nu există nicio cameră cu acest cod.'}));
+      _sendError(channel, 'err.roomNotFound');
       return;
     }
     room.attachSpectator(channel);
@@ -498,20 +519,20 @@ class EventServerService {
         roomName == null ||
         roomName.isEmpty ||
         roomName.length > maxRoomNameLength) {
-      channel.sink.add(GameMessage.encode({'type': 'error', 'message': 'Cerere de creare a camerei invalidă.'}));
+      _sendError(channel, 'err.invalidCreate');
       return;
     }
     if (!EventConfigStore.instance.isEnabled(definition.id)) {
-      channel.sink.add(GameMessage.encode({'type': 'error', 'message': 'Activitatea nu e disponibilă în seara asta.'}));
+      _sendError(channel, 'err.activityUnavailable');
       return;
     }
     if (_rooms.length >= maxRooms) {
-      channel.sink.add(GameMessage.encode({'type': 'error', 'message': 'Sunt prea multe camere deschise — alătură-te uneia existente.'}));
+      _sendError(channel, 'err.tooManyRooms');
       return;
     }
     final profileId = publicPlayerId(secretId as String);
     if (BlockedUsersStore.instance.isBlocked(profileId)) {
-      channel.sink.add(GameMessage.encode({'type': 'error', 'message': 'Ai fost blocat de organizator.'}));
+      _sendError(channel, 'err.blocked');
       return;
     }
     final rawStake = msg['tableStake'];
@@ -545,23 +566,23 @@ class EventServerService {
     final secretId = msg['profileId'];
     final room = code == null ? null : _rooms[code];
     if (room == null) {
-      channel.sink.add(GameMessage.encode({'type': 'error', 'message': 'Nu există nicio cameră cu acest cod.'}));
+      _sendError(channel, 'err.roomNotFound');
       return;
     }
     if (name == null || name.isEmpty || name.length > maxNameLength || !isValidSecretProfileId(secretId)) {
-      channel.sink.add(GameMessage.encode({'type': 'error', 'message': 'Cerere de alăturare invalidă.'}));
+      _sendError(channel, 'err.invalidJoin');
       return;
     }
     // Verificat aici, nu doar în client — altfel clientul ar ocupa un loc
     // într-o cameră pe care o refuză apoi singur.
     final expectedGameId = _readString(msg, 'gameId');
     if (expectedGameId != null && expectedGameId != room.definition.id) {
-      channel.sink.add(GameMessage.encode({'type': 'error', 'message': 'Camera aceasta găzduiește alt joc.'}));
+      _sendError(channel, 'err.wrongGame');
       return;
     }
     final profileId = publicPlayerId(secretId as String);
     if (BlockedUsersStore.instance.isBlocked(profileId)) {
-      channel.sink.add(GameMessage.encode({'type': 'error', 'message': 'Ai fost blocat de organizator.'}));
+      _sendError(channel, 'err.blocked');
       return;
     }
     _attach(room, channel, state, playerId: profileId, name: name, isHost: false);
@@ -580,7 +601,7 @@ class EventServerService {
     try {
       room.attach(playerId: playerId, name: name, isHost: isHost, channel: channel);
     } catch (e) {
-      channel.sink.add(GameMessage.encode({'type': 'error', 'message': e.toString()}));
+      _sendException(channel, e);
       return false;
     }
     state.room = room;

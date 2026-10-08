@@ -32,6 +32,21 @@ Jocuri multiplayer, chat și comenzi la bar pe rețeaua Wi-Fi a unui local, făr
 - Comenzile la bar sunt persistate (`OrdersStore`) și supraviețuiesc unei reporniri
   a serverului.
 
+## Limbi (română / engleză)
+
+- Butonul **RO/EN** din bara de sus a fiecărui ecran schimbă limba imediat, fără să
+  părăsească ecranul sau partida. Alegerea e salvată pe fiecare dispozitiv.
+- Toate textele sunt în `lib/l10n/strings/`. Fiecare cheie are perechea
+  `(română, engleză)`. În cod se folosește `tr('cheie', {'arg': valoare})`, iar
+  șabloanele conțin `{arg}`.
+- Textele generate de server (erori, rezumate de mână, evenimente de joc) circulă
+  ca chei (`GameError`, `LocalizedText`), nu ca text. Fiecare client le traduce în
+  limba lui, fiindcă serverul e comun pentru toți.
+- **Adaugi o limbă nouă?** Extinde enum-ul `AppLanguage` și tuplurile din dicționar.
+  **Adaugi un text?** Pune o cheie nouă în tabelul potrivit.
+  `test/l10n_test.dart` pică dacă o cheie folosită în cod lipsește sau dacă
+  placeholder-ele diferă între limbi.
+
 ## Build
 
 ```powershell

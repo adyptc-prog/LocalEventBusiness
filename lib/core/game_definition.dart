@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 
 import 'chat_message.dart';
 import 'game_engine.dart';
+import '../l10n/tr.dart';
 
 /// Tot ce trebuie ecranului de joc ca să afișeze o partidă și să trimită
 /// acțiuni — indiferent dacă rulează pe gazdă sau pe un client, și
@@ -49,8 +50,6 @@ class GameSessionArgs {
 /// construiește motorul de reguli și cum se construiește ecranul de joc.
 class GameDefinition {
   final String id;
-  final String title;
-  final String subtitle;
   final IconData icon;
   final Color accentColor;
   final int minPlayers;
@@ -60,8 +59,6 @@ class GameDefinition {
 
   const GameDefinition({
     required this.id,
-    required this.title,
-    required this.subtitle,
     required this.icon,
     required this.accentColor,
     required this.minPlayers,
@@ -70,6 +67,12 @@ class GameDefinition {
     required this.buildGameScreen,
   });
 
-  String get playersLabel =>
-      minPlayers == maxPlayers ? '$minPlayers jucători' : '$minPlayers-$maxPlayers jucători';
+  /// Numele și descrierea jocului, în limba curentă (cheile
+  /// `game.<id>.title` / `game.<id>.subtitle` din `lib/l10n`).
+  String get title => tr('game.$id.title');
+  String get subtitle => tr('game.$id.subtitle');
+
+  String get playersLabel => minPlayers == maxPlayers
+      ? tr('game.players', {'n': minPlayers})
+      : tr('game.playersRange', {'min': minPlayers, 'max': maxPlayers});
 }

@@ -9,6 +9,8 @@ import 'uno_card.dart';
 import 'uno_card_widget.dart';
 import 'uno_opponent_widget.dart';
 import 'uno_snapshot.dart';
+import '../../l10n/tr.dart';
+import '../../widgets/language_button.dart';
 
 class UnoGameScreen extends StatefulWidget {
   final GameSessionArgs args;
@@ -63,8 +65,8 @@ class _UnoGameScreenState extends State<UnoGameScreen> {
         context: context,
         barrierDismissible: false,
         builder: (context) => AlertDialog(
-          title: Text(isMe ? 'Ai câștigat! 🎉' : 'Joc terminat'),
-          content: Text('${_snapshot.winnerName} a scăpat primul de cărți.'),
+          title: Text(isMe ? tr('game.youWon') : tr('game.over')),
+          content: Text(tr('macao.winner', {'name': _snapshot.winnerName})),
           actions: [
             TextButton(
               onPressed: () {
@@ -73,7 +75,7 @@ class _UnoGameScreenState extends State<UnoGameScreen> {
                   ..pop()
                   ..popUntil((route) => route.isFirst);
               },
-              child: const Text('Înapoi la meniu'),
+              child: Text(tr('game.backToMenu')),
             ),
           ],
         ),
@@ -113,11 +115,11 @@ class _UnoGameScreenState extends State<UnoGameScreen> {
       backgroundColor: const Color(0xFF1B1B2E),
       appBar: AppBar(
         backgroundColor: const Color(0xFF12121F),
-        title: Text(_snapshot.isMyTurn ? 'Rândul tău' : 'Se joacă...'),
+        title: Text(_snapshot.isMyTurn ? tr('game.yourTurn') : tr('game.playing')),
         actions: [
           IconButton(
             icon: const Icon(Icons.leaderboard),
-            tooltip: 'Clasament și chat',
+            tooltip: tr('lobby.leaderboardAndChat'),
             onPressed: () => Navigator.of(context).push(
               MaterialPageRoute(
                 builder: (context) => LeaderboardScreen(
@@ -132,12 +134,13 @@ class _UnoGameScreenState extends State<UnoGameScreen> {
           ),
           IconButton(
             icon: const Icon(Icons.exit_to_app),
-            tooltip: 'Ieși din joc',
+            tooltip: tr('game.leave'),
             onPressed: () {
               widget.args.onLeave();
               Navigator.of(context).popUntil((route) => route.isFirst);
             },
           ),
+          const LanguageButton(),
         ],
       ),
       body: SafeArea(
@@ -157,7 +160,7 @@ class _UnoGameScreenState extends State<UnoGameScreen> {
               Padding(
                 padding: const EdgeInsets.symmetric(horizontal: 16),
                 child: Text(
-                  _snapshot.lastEventMessage!,
+                  _snapshot.lastEventMessage!.resolve(),
                   textAlign: TextAlign.center,
                   style: const TextStyle(color: Colors.amberAccent, fontWeight: FontWeight.bold),
                 ),
@@ -171,7 +174,7 @@ class _UnoGameScreenState extends State<UnoGameScreen> {
                 child: OutlinedButton(
                   style: OutlinedButton.styleFrom(foregroundColor: Colors.white, side: const BorderSide(color: Colors.white70)),
                   onPressed: _handlePassTap,
-                  child: const Text('Treci tura'),
+                  child: Text(tr('uno.pass')),
                 ),
               ),
             Text(me.name, style: const TextStyle(color: Colors.white70, fontSize: 12)),

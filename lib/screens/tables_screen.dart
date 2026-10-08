@@ -4,6 +4,8 @@ import 'package:qr_flutter/qr_flutter.dart';
 
 import '../core/table_config_store.dart';
 import '../network/event_server_service.dart';
+import '../widgets/language_button.dart';
+import '../l10n/tr.dart';
 
 /// Ecran de organizator: câte mese are localul + un QR per masă, ca un
 /// client să scaneze și să ajungă direct pe ecranul de comandă cu masa
@@ -49,15 +51,15 @@ class _TablesScreenState extends State<TablesScreen> {
 
     return Scaffold(
       backgroundColor: const Color(0xFF101418),
-      appBar: AppBar(backgroundColor: Colors.black26, title: const Text('Mese / cod QR')),
+      appBar: AppBar(backgroundColor: Colors.black26, title: Text(tr('mainMenu.tables')), actions: const [LanguageButton()]),
       body: SafeArea(
         child: ListView(
           padding: const EdgeInsets.all(16),
           children: [
             if (ip == null)
-              const Text(
-                'Pornește serverul localului ca să afli adresa de rețea — fără ea, codurile QR nu pot fi generate.',
-                style: TextStyle(color: Colors.orangeAccent),
+              Text(
+                tr('tables.noIp'),
+                style: const TextStyle(color: Colors.orangeAccent),
               )
             else ...[
               Row(
@@ -67,16 +69,16 @@ class _TablesScreenState extends State<TablesScreen> {
                       controller: _countController,
                       keyboardType: TextInputType.number,
                       style: const TextStyle(color: Colors.white),
-                      decoration: const InputDecoration(labelText: 'Câte mese ai', labelStyle: TextStyle(color: Colors.white70)),
+                      decoration: InputDecoration(labelText: tr('tables.count'), labelStyle: const TextStyle(color: Colors.white70)),
                     ),
                   ),
                   const SizedBox(width: 12),
-                  FilledButton(onPressed: _save, child: const Text('Generează')),
+                  FilledButton(onPressed: _save, child: Text(tr('tables.generate'))),
                 ],
               ),
               const SizedBox(height: 24),
               if (count == 0)
-                const Text('Introdu numărul de mese și apasă „Generează".', style: TextStyle(color: Colors.white54))
+                Text(tr('tables.hint'), style: const TextStyle(color: Colors.white54))
               else
                 GridView.builder(
                   shrinkWrap: true,
@@ -96,7 +98,7 @@ class _TablesScreenState extends State<TablesScreen> {
                               child: QrImageView(data: url, backgroundColor: Colors.white),
                             ),
                             const SizedBox(height: 8),
-                            Text('Masa $table', style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
+                            Text(tr('orders.table', {'table': table}), style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
                           ],
                         ),
                       ),

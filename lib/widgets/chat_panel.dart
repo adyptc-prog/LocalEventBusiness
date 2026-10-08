@@ -3,6 +3,7 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 
 import '../core/chat_message.dart';
+import '../l10n/tr.dart';
 
 /// Chat live al camerei curente: mesaje publice (toți jucătorii) sau
 /// private (1-la-1, alese dintr-un selector de destinatar). Presupune o
@@ -98,7 +99,7 @@ class _ChatPanelState extends State<ChatPanel> {
             padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
             children: [
               _TargetChip(
-                label: 'Public',
+                label: tr('chat.public'),
                 selected: _selectedTargetId == null,
                 onTap: () => setState(() => _selectedTargetId = null),
               ),
@@ -114,8 +115,8 @@ class _ChatPanelState extends State<ChatPanel> {
         const Divider(height: 1),
         Expanded(
           child: _messages.isEmpty
-              ? const Center(
-                  child: Text('Niciun mesaj încă — scrie ceva mai jos.', style: TextStyle(color: Colors.white38)),
+              ? Center(
+                  child: Text(tr('chat.emptyHint'), style: const TextStyle(color: Colors.white38)),
                 )
               : ListView.builder(
                   controller: _scrollController,
@@ -135,7 +136,7 @@ class _ChatPanelState extends State<ChatPanel> {
                     controller: _textController,
                     style: const TextStyle(color: Colors.white),
                     decoration: InputDecoration(
-                      hintText: _selectedTargetId == null ? 'Mesaj pentru toți...' : 'Mesaj privat...',
+                      hintText: _selectedTargetId == null ? tr('chat.hintPublic') : tr('chat.hintPrivate'),
                       hintStyle: const TextStyle(color: Colors.white38),
                       filled: true,
                       fillColor: Colors.white10,
@@ -194,7 +195,7 @@ class _MessageBubble extends StatelessWidget {
 
     String? tag;
     if (message.isPrivate) {
-      tag = isMine ? '🔒 privat către ${message.toName ?? '...'}' : '🔒 privat';
+      tag = isMine ? tr('chat.privateTo', {'name': message.toName ?? '...'}) : tr('chat.private');
     }
 
     return Padding(
@@ -205,7 +206,7 @@ class _MessageBubble extends StatelessWidget {
           if (!isMine)
             Padding(
               padding: const EdgeInsets.only(left: 10, bottom: 2),
-              child: Text(message.fromName, style: const TextStyle(color: Colors.white54, fontSize: 11)),
+              child: Text(message.displayName, style: const TextStyle(color: Colors.white54, fontSize: 11)),
             ),
           Container(
             constraints: BoxConstraints(maxWidth: MediaQuery.of(context).size.width * 0.72),

@@ -10,6 +10,7 @@ import '../core/menu_store.dart';
 import '../core/moderation_log_store.dart';
 import '../core/muted_users_store.dart';
 import '../core/order.dart';
+import '../l10n/tr.dart';
 import '../core/orders_store.dart';
 import '../core/organizer_key_store.dart';
 import 'event_server_service.dart';
@@ -91,7 +92,7 @@ class EventServerRunner {
           _ordersController.add(orders);
           break;
         case 'start_error':
-          _startErrorController.add(decoded['message'] as String? ?? 'Serverul nu a putut porni.');
+          _startErrorController.add(decoded['message'] as String? ?? tr('err.serverStart'));
           break;
       }
     } catch (_) {}
@@ -106,8 +107,8 @@ class EventServerRunner {
     FlutterForegroundTask.init(
       androidNotificationOptions: AndroidNotificationOptions(
         channelId: 'localevent_server',
-        channelName: 'Server local',
-        channelDescription: 'Rulează cât timp serverul localului e activ.',
+        channelName: tr('server.notif.channel'),
+        channelDescription: tr('server.notif.channelDesc'),
         onlyAlertOnce: true,
       ),
       iosNotificationOptions: const IOSNotificationOptions(showNotification: false),
@@ -125,7 +126,7 @@ class EventServerRunner {
 
     final result = await FlutterForegroundTask.startService(
       serviceId: _serviceId,
-      notificationTitle: 'Server local activ',
+      notificationTitle: tr('server.notif.title'),
       notificationText: serverName,
       callback: _startCallback,
     );
@@ -212,6 +213,7 @@ class _EventServerTaskHandler extends TaskHandler {
     await ModerationLogStore.instance.init();
     await OrganizerKeyStore.instance.init();
     await OrdersStore.instance.init();
+    await LanguageController.instance.init();
     final server = EventServerService(serverName: 'Server local');
     try {
       await server.start();
@@ -227,7 +229,7 @@ class _EventServerTaskHandler extends TaskHandler {
         'rooms': rooms.map((r) => r.toJson()).toList(),
       }));
       FlutterForegroundTask.updateService(
-        notificationText: rooms.isEmpty ? 'Nicio cameră activă' : '${rooms.length} camere active',
+        notificationText: rooms.isEmpty ? tr('server.notif.noRooms') : tr('server.notif.rooms', {'n': rooms.length}),
       );
     });
     _participantsSub = server.participantsUpdates.listen((participants) {

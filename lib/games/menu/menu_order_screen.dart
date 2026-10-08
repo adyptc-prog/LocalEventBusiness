@@ -3,7 +3,10 @@ import 'dart:async';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 
+import '../../widgets/language_button.dart';
+
 import '../../core/game_definition.dart';
+import '../../l10n/tr.dart';
 
 /// Ecranul clientului: răsfoiește meniul localului, își compune o comandă și
 /// vede live statusul comenzilor proprii — nimic din asta nu depinde de o
@@ -79,11 +82,11 @@ class _MenuOrderScreenState extends State<MenuOrderScreen> {
   Future<void> _submit() async {
     final table = _tableController.text.trim();
     if (table.isEmpty) {
-      setState(() => _error = 'Introdu numărul mesei.');
+      setState(() => _error = tr('menuOrder.enterTable'));
       return;
     }
     if (_cart.isEmpty) {
-      setState(() => _error = 'Alege cel puțin un produs.');
+      setState(() => _error = tr('menuOrder.chooseItem'));
       return;
     }
     setState(() {
@@ -102,7 +105,7 @@ class _MenuOrderScreenState extends State<MenuOrderScreen> {
       _submitting = false;
     });
     if (mounted) {
-      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Comandă trimisă la bar.')));
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(tr('menuOrder.sent'))));
     }
   }
 
@@ -113,10 +116,10 @@ class _MenuOrderScreenState extends State<MenuOrderScreen> {
   }
 
   String _statusLabel(String status) => switch (status) {
-        'placed' => 'Trimisă',
-        'preparing' => 'În pregătire',
-        'ready' => 'Gata',
-        'cancelled' => 'Anulată',
+        'placed' => tr('menuOrder.status.placed'),
+        'preparing' => tr('orders.status.preparing'),
+        'ready' => tr('orders.status.ready'),
+        'cancelled' => tr('orders.status.cancelled'),
         _ => status,
       };
 
@@ -139,16 +142,16 @@ class _MenuOrderScreenState extends State<MenuOrderScreen> {
       },
       child: Scaffold(
         backgroundColor: const Color(0xFF101418),
-        appBar: AppBar(backgroundColor: Colors.black26, title: const Text('Meniu')),
+        appBar: AppBar(backgroundColor: Colors.black26, title: Text(tr('game.menu.title')), actions: const [LanguageButton()]),
         body: SafeArea(
           child: items.isEmpty
-              ? const Center(
+              ? Center(
                   child: Padding(
-                    padding: EdgeInsets.all(24),
+                    padding: const EdgeInsets.all(24),
                     child: Text(
-                      'Localul nu a adăugat încă produse în meniu.',
+                      tr('menuOrder.empty'),
                       textAlign: TextAlign.center,
-                      style: TextStyle(color: Colors.white54),
+                      style: const TextStyle(color: Colors.white54),
                     ),
                   ),
                 )
@@ -158,10 +161,10 @@ class _MenuOrderScreenState extends State<MenuOrderScreen> {
                     TextField(
                       controller: _tableController,
                       style: const TextStyle(color: Colors.white),
-                      decoration: const InputDecoration(
-                        labelText: 'Masa',
-                        labelStyle: TextStyle(color: Colors.white70),
-                        enabledBorder: UnderlineInputBorder(borderSide: BorderSide(color: Colors.white38)),
+                      decoration: InputDecoration(
+                        labelText: tr('menuOrder.table'),
+                        labelStyle: const TextStyle(color: Colors.white70),
+                        enabledBorder: const UnderlineInputBorder(borderSide: BorderSide(color: Colors.white38)),
                       ),
                     ),
                     const SizedBox(height: 16),
@@ -235,7 +238,7 @@ class _MenuOrderScreenState extends State<MenuOrderScreen> {
                     Text(item['name'] as String, style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w600)),
                     if ((item['description'] as String?)?.isNotEmpty ?? false)
                       Text(item['description'] as String, style: const TextStyle(color: Colors.white54, fontSize: 12)),
-                    if (!available) const Text('Indisponibil', style: TextStyle(color: Colors.orangeAccent, fontSize: 12)),
+                    if (!available) Text(tr('menuOrder.unavailable'), style: const TextStyle(color: Colors.orangeAccent, fontSize: 12)),
                   ],
                 ),
               ),
@@ -263,7 +266,7 @@ class _MenuOrderScreenState extends State<MenuOrderScreen> {
   List<Widget> _buildMyOrdersSection() {
     return [
       const Divider(color: Colors.white24),
-      const Text('Comenzile mele', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 16)),
+      Text(tr('menuOrder.myOrders'), style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 16)),
       const SizedBox(height: 8),
       for (final order in _myOrders) _buildOrderTile(order),
     ];
@@ -283,7 +286,7 @@ class _MenuOrderScreenState extends State<MenuOrderScreen> {
             Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
-                Text('Masa ${order['tableLabel']}', style: const TextStyle(color: Colors.white70)),
+                Text(tr('orders.table', {'table': order['tableLabel']}), style: const TextStyle(color: Colors.white70)),
                 Text(_statusLabel(status), style: TextStyle(color: _statusColor(status), fontWeight: FontWeight.bold)),
               ],
             ),
@@ -308,9 +311,9 @@ class _MenuOrderScreenState extends State<MenuOrderScreen> {
             TextField(
               controller: _noteController,
               style: const TextStyle(color: Colors.white),
-              decoration: const InputDecoration(
-                hintText: 'Notă pentru bar (opțional)',
-                hintStyle: TextStyle(color: Colors.white38),
+              decoration: InputDecoration(
+                hintText: tr('menuOrder.noteHint'),
+                hintStyle: const TextStyle(color: Colors.white38),
               ),
             ),
             if (_error != null)
@@ -323,7 +326,7 @@ class _MenuOrderScreenState extends State<MenuOrderScreen> {
               width: double.infinity,
               child: FilledButton(
                 onPressed: _submitting ? null : _submit,
-                child: Text('Trimite comanda ($_cartCount produse)'),
+                child: Text(tr('menuOrder.submit', {'n': _cartCount})),
               ),
             ),
           ],

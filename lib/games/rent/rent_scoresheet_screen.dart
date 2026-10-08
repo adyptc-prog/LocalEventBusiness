@@ -1,7 +1,10 @@
 import 'package:flutter/material.dart';
 
+import '../../widgets/language_button.dart';
+
 import 'rent_categories.dart';
 import 'rent_snapshot.dart';
+import '../../l10n/tr.dart';
 
 /// „Tabelul pe o foaie” al unei partide de Rent: un rând per categorie
 /// jucată, o coloană per jucător, cu scorul acelei categorii și totalul
@@ -16,11 +19,11 @@ class RentScoresheetScreen extends StatelessWidget {
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: const Color(0xFF3A1F1F),
-      appBar: AppBar(backgroundColor: const Color(0xFF241010), title: const Text('Tabel')),
+      appBar: AppBar(backgroundColor: const Color(0xFF241010), title: Text(tr('game.scoresheet')), actions: const [LanguageButton()]),
       body: SafeArea(
         child: snapshot.history.isEmpty
-            ? const Center(
-                child: Text('Nicio categorie încheiată încă.', style: TextStyle(color: Colors.white54)),
+            ? Center(
+                child: Text(tr('rent.noCategories'), style: const TextStyle(color: Colors.white54)),
               )
             : SingleChildScrollView(
                 scrollDirection: Axis.horizontal,
@@ -28,11 +31,11 @@ class RentScoresheetScreen extends StatelessWidget {
                   child: DataTable(
                     headingRowColor: WidgetStateProperty.all(Colors.black26),
                     columns: [
-                      const DataColumn(label: Text('Categorie', style: TextStyle(color: Colors.white70))),
+                      DataColumn(label: Text(tr('rent.categoryColumn'), style: const TextStyle(color: Colors.white70))),
                       for (final p in snapshot.players)
                         DataColumn(
                           label: Text(
-                            p.id == myId ? '${p.name} (tu)' : p.name,
+                            p.id == myId ? tr('game.nameYou', {'name': p.name}) : p.name,
                             style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
                           ),
                         ),
@@ -40,7 +43,7 @@ class RentScoresheetScreen extends StatelessWidget {
                     rows: [
                       for (final round in snapshot.history)
                         DataRow(cells: [
-                          DataCell(Text(kRentCategoryLabels[round.category] ?? round.category,
+                          DataCell(Text(rentCategoryLabel(round.category),
                               style: const TextStyle(color: Colors.white70))),
                           for (final p in snapshot.players)
                             DataCell(_ScoreCell(

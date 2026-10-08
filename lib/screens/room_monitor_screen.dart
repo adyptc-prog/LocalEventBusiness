@@ -2,11 +2,14 @@ import 'dart:async';
 
 import 'package:flutter/material.dart';
 
+import '../core/activity_catalog.dart';
 import '../core/chat_message.dart';
 import '../core/organizer_key_store.dart';
 import '../network/client_service.dart';
 import '../network/event_server_runner.dart';
 import '../network/event_server_service.dart';
+import '../widgets/language_button.dart';
+import '../l10n/tr.dart';
 
 /// Ecran de organizator: conectare la propriul server (exact fluxul din
 /// `EventConnectScreen`), apoi alegerea unei camere active de monitorizat
@@ -83,7 +86,7 @@ class _RoomMonitorScreenState extends State<RoomMonitorScreen> {
       if (!mounted) return;
       setState(() {
         _connecting = false;
-        _error = 'Nu m-am putut conecta: $e';
+        _error = tr('connect.failed', {'error': e});
       });
     }
   }
@@ -110,7 +113,7 @@ class _RoomMonitorScreenState extends State<RoomMonitorScreen> {
       if (!mounted) return;
       setState(() {
         _connecting = false;
-        _error = 'Nu am putut monitoriza camera: $e';
+        _error = tr('monitor.failed', {'error': e});
       });
     }
   }
@@ -138,11 +141,12 @@ class _RoomMonitorScreenState extends State<RoomMonitorScreen> {
       backgroundColor: const Color(0xFF101418),
       appBar: AppBar(
         backgroundColor: Colors.black26,
-        title: const Text('Monitorizează camere'),
+        title: Text(tr('mainMenu.monitor')),
+        actions: const [LanguageButton()],
         leading: _spectating
             ? IconButton(
                 icon: const Icon(Icons.arrow_back),
-                tooltip: 'Înapoi la listă',
+                tooltip: tr('monitor.backToList'),
                 onPressed: _backToList,
               )
             : null,
@@ -176,7 +180,7 @@ class _RoomMonitorScreenState extends State<RoomMonitorScreen> {
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
           Text(
-            'Conectează-te la același Wi-Fi sau hotspot ca serverul evenimentului — apare automat aici.',
+            tr('connect.nativeHint'),
             style: TextStyle(color: Colors.white.withValues(alpha: 0.5), fontSize: 12),
           ),
           const SizedBox(height: 8),
@@ -185,8 +189,8 @@ class _RoomMonitorScreenState extends State<RoomMonitorScreen> {
               color: Colors.green.withValues(alpha: 0.15),
               child: ListTile(
                 leading: const Icon(Icons.smartphone, color: Colors.lightGreenAccent),
-                title: const Text('Acest telefon (server local)'),
-                subtitle: const Text('Conectare directă, recomandat — nu depinde de router.'),
+                title: Text(tr('rooms.thisPhone')),
+                subtitle: Text(tr('rooms.thisPhoneHint')),
                 onTap: _connecting ? null : () => _connect('127.0.0.1', EventServerService.webPort),
               ),
             ),
@@ -196,7 +200,7 @@ class _RoomMonitorScreenState extends State<RoomMonitorScreen> {
                   child: Center(
                     child: _connecting
                         ? const CircularProgressIndicator()
-                        : const Text('Se caută serverul...', style: TextStyle(color: Colors.white38)),
+                        : Text(tr('connect.searching'), style: const TextStyle(color: Colors.white38)),
                   ),
                 )
               : Column(
@@ -205,7 +209,7 @@ class _RoomMonitorScreenState extends State<RoomMonitorScreen> {
                             child: ListTile(
                               leading: const Icon(Icons.dns),
                               title: Text(server.name),
-                              subtitle: Text('${server.rooms} camere active · ${server.address}'),
+                              subtitle: Text(tr('connect.serverSubtitle', {'n': server.rooms, 'address': server.address})),
                               onTap: _connecting ? null : () => _connect(server.address, server.port),
                             ),
                           ))
@@ -213,7 +217,7 @@ class _RoomMonitorScreenState extends State<RoomMonitorScreen> {
                 ),
           const Divider(color: Colors.white24),
           ExpansionTile(
-            title: const Text('Nu găsești serverul? Introdu IP-ul manual', style: TextStyle(color: Colors.white70)),
+            title: Text(tr('connect.manualIp'), style: const TextStyle(color: Colors.white70)),
             collapsedIconColor: Colors.white70,
             iconColor: Colors.white70,
             children: [
@@ -224,11 +228,11 @@ class _RoomMonitorScreenState extends State<RoomMonitorScreen> {
                       controller: _manualHostController,
                       enabled: !_connecting,
                       style: const TextStyle(color: Colors.white),
-                      decoration: const InputDecoration(hintText: 'ex: 192.168.43.1 sau 127.0.0.1'),
+                      decoration: InputDecoration(hintText: tr('monitor.ipHint')),
                     ),
                   ),
                   const SizedBox(width: 8),
-                  FilledButton(onPressed: _connecting ? null : _connectManualHost, child: const Text('Conectează')),
+                  FilledButton(onPressed: _connecting ? null : _connectManualHost, child: Text(tr('common.connect'))),
                 ],
               ),
             ],
@@ -242,11 +246,11 @@ class _RoomMonitorScreenState extends State<RoomMonitorScreen> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
-        const Text('Camere active', style: TextStyle(color: Colors.white70, fontWeight: FontWeight.bold)),
+        Text(tr('monitor.activeRooms'), style: const TextStyle(color: Colors.white70, fontWeight: FontWeight.bold)),
         const SizedBox(height: 8),
         Expanded(
           child: _rooms.isEmpty
-              ? const Center(child: Text('Nicio cameră activă acum.', style: TextStyle(color: Colors.white38)))
+              ? Center(child: Text(tr('monitor.noRooms'), style: const TextStyle(color: Colors.white38)))
               : ListView.builder(
                   itemCount: _rooms.length,
                   itemBuilder: (context, index) {
@@ -254,8 +258,8 @@ class _RoomMonitorScreenState extends State<RoomMonitorScreen> {
                     return Card(
                       child: ListTile(
                         leading: const Icon(Icons.visibility),
-                        title: Text(room.roomName),
-                        subtitle: Text('${room.gameTitle} · ${room.players}/${room.maxPlayers} jucători · cod ${room.code}'),
+                        title: Text(room.gameId == 'menu' ? activityTitleFor('menu') : room.roomName),
+                        subtitle: Text('${activityTitleFor(room.gameId, fallback: room.gameTitle)} · ${tr('rooms.roomSubtitle', {'players': room.players, 'max': room.maxPlayers, 'code': room.code})}'),
                         trailing: _connecting
                             ? const SizedBox(width: 20, height: 20, child: CircularProgressIndicator(strokeWidth: 2))
                             : const Icon(Icons.arrow_forward),
@@ -312,11 +316,11 @@ class _SpectatorViewState extends State<_SpectatorView> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
-        const Text('Chat public', style: TextStyle(color: Colors.white70, fontWeight: FontWeight.bold)),
+        Text(tr('monitor.publicChat'), style: const TextStyle(color: Colors.white70, fontWeight: FontWeight.bold)),
         const SizedBox(height: 8),
         Expanded(
           child: _messages.isEmpty
-              ? const Center(child: Text('Niciun mesaj încă.', style: TextStyle(color: Colors.white38)))
+              ? Center(child: Text(tr('chat.noMessages'), style: const TextStyle(color: Colors.white38)))
               : ListView.builder(
                   itemCount: _messages.length,
                   itemBuilder: (context, index) {
@@ -325,7 +329,7 @@ class _SpectatorViewState extends State<_SpectatorView> {
                       padding: const EdgeInsets.symmetric(vertical: 2),
                       child: Text.rich(
                         TextSpan(children: [
-                          TextSpan(text: '${msg.fromName}: ', style: const TextStyle(color: Colors.amberAccent, fontWeight: FontWeight.bold)),
+                          TextSpan(text: '${msg.displayName}: ', style: const TextStyle(color: Colors.amberAccent, fontWeight: FontWeight.bold)),
                           TextSpan(text: msg.text, style: const TextStyle(color: Colors.white)),
                         ]),
                       ),
@@ -339,7 +343,7 @@ class _SpectatorViewState extends State<_SpectatorView> {
               child: TextField(
                 controller: _messageController,
                 style: const TextStyle(color: Colors.white),
-                decoration: const InputDecoration(hintText: 'Scrie ca organizator...'),
+                decoration: InputDecoration(hintText: tr('monitor.writeAsOrganizer')),
                 onSubmitted: (_) => _send(),
               ),
             ),

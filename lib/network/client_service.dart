@@ -5,6 +5,7 @@ import 'package:web_socket_channel/web_socket_channel.dart';
 import '../core/chat_message.dart';
 import '../core/leaderboard_store.dart';
 import '../core/match_record.dart';
+import '../l10n/tr.dart';
 import 'discovered_room.dart';
 import 'game_message.dart';
 import 'lobby_room.dart';
@@ -125,9 +126,9 @@ class ClientService {
     _channelSub?.cancel();
     _channel?.sink.close();
     _channel = null;
-    _pendingJoin?.completeError('Conexiune inactivă.');
+    _pendingJoin?.completeError(tr('err.connInactive'));
     _pendingJoin = null;
-    _pendingSpectate?.completeError('Conexiune inactivă.');
+    _pendingSpectate?.completeError(tr('err.connInactive'));
     _pendingSpectate = null;
     _disconnectedController.add(null);
     _maybeAutoReconnect();
@@ -164,7 +165,7 @@ class ClientService {
             final gameId = msg['gameId'] as String?;
             final expected = _pendingGameId;
             if (expected != null && gameId != null && gameId != expected) {
-              _pendingJoin?.completeError('Camera aceasta găzduiește alt joc.');
+              _pendingJoin?.completeError(tr('err.wrongGame'));
               _pendingJoin = null;
               return;
             }
@@ -183,7 +184,7 @@ class ClientService {
             _stateController.add(latestSnapshot!);
             break;
           case 'error':
-            final message = msg['message'] as String? ?? 'Eroare necunoscută';
+            final message = _errorText(msg);
             _errorController.add(message);
             _pendingJoin?.completeError(message);
             _pendingJoin = null;
@@ -196,7 +197,7 @@ class ClientService {
             // vechi) — acest canal nu mai reîncearcă, altfel cele două
             // conexiuni s-ar da afară reciproc la nesfârșit.
             _intentionalDisconnect = true;
-            _errorController.add('Ai intrat în cameră de pe altă conexiune — aceasta a fost închisă.');
+            _errorController.add(tr('err.replaced'));
             break;
           case 'chat':
             _chatController.add(ChatMessage.fromJson(Map<String, dynamic>.from(msg['message'] as Map)));
@@ -208,9 +209,9 @@ class ClientService {
         }
       },
       onDone: () {
-        _pendingJoin?.completeError('Conexiune închisă.');
+        _pendingJoin?.completeError(tr('err.connClosed'));
         _pendingJoin = null;
-        _pendingSpectate?.completeError('Conexiune închisă.');
+        _pendingSpectate?.completeError(tr('err.connClosed'));
         _pendingSpectate = null;
         _disconnectedController.add(null);
         _maybeAutoReconnect();
@@ -226,6 +227,18 @@ class ClientService {
     );
   }
 
+  /// Textul unei erori de la server, în limba curentă — din cheie dacă
+  /// serverul o trimite, altfel textul lui brut (server vechi).
+  static String _errorText(Map<String, dynamic> msg) {
+    final key = msg['messageKey'];
+    if (key is String) {
+      final rawArgs = msg['messageArgs'];
+      return tr(key, rawArgs is Map ? Map<String, Object?>.from(rawArgs) : const {});
+    }
+    final message = msg['message'];
+    return message is String ? message : tr('err.unknown');
+  }
+
   /// Declanșează o reconectare automată doar dacă pierderea canalului nu a
   /// fost cerută de utilizator ([disconnect]) și eram deja atașați unei
   /// camere — altfel (ex: canalul din ecranul de conectare, înainte de a
@@ -239,7 +252,7 @@ class ClientService {
   void _scheduleReconnect() {
     if (_intentionalDisconnect) return;
     if (_reconnectAttempt >= _maxReconnectAttempts) {
-      _errorController.add('Conexiune pierdută — nu m-am putut reconecta.');
+      _errorController.add(tr('err.connLost'));
       return;
     }
     _reconnectAttempt++;

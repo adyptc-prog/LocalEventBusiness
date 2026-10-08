@@ -7,6 +7,8 @@ import '../../screens/leaderboard_screen.dart';
 import '../../widgets/playing_card_widget.dart';
 import 'poker_rules_screen.dart';
 import 'poker_snapshot.dart';
+import '../../l10n/tr.dart';
+import '../../widgets/language_button.dart';
 
 class PokerGameScreen extends StatefulWidget {
   final GameSessionArgs args;
@@ -65,10 +67,10 @@ class _PokerGameScreenState extends State<PokerGameScreen> {
     if (_winnerDialogShown || _snapshot.started) return;
     _winnerDialogShown = true;
     final isMe = _snapshot.winnerId == widget.args.myId;
-    final title = isMe ? 'Ai câștigat tot! 🎉' : 'Joc terminat';
+    final title = isMe ? tr('game.youWonAll') : tr('game.over');
     final content = isMe
-        ? 'Ai luat toate fisele de pe masă.'
-        : '${_snapshot.winnerName(widget.args.myId) ?? 'Câștigătorul'} a luat toate fisele.';
+        ? tr('poker.youTookAll')
+        : tr('poker.theyTookAll', {'name': _snapshot.winnerName(widget.args.myId) ?? tr('poker.theWinner')});
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (!mounted) return;
       showDialog(
@@ -85,7 +87,7 @@ class _PokerGameScreenState extends State<PokerGameScreen> {
                   ..pop()
                   ..popUntil((route) => route.isFirst);
               },
-              child: const Text('Înapoi la meniu'),
+              child: Text(tr('game.backToMenu')),
             ),
           ],
         ),
@@ -120,14 +122,14 @@ class _PokerGameScreenState extends State<PokerGameScreen> {
         actions: [
           IconButton(
             icon: const Icon(Icons.info_outline),
-            tooltip: 'Regulile jocului',
+            tooltip: tr('poker.rules'),
             onPressed: () => Navigator.of(context).push(
               MaterialPageRoute(builder: (context) => const PokerRulesScreen()),
             ),
           ),
           IconButton(
             icon: const Icon(Icons.leaderboard),
-            tooltip: 'Clasament și chat',
+            tooltip: tr('lobby.leaderboardAndChat'),
             onPressed: () => Navigator.of(context).push(
               MaterialPageRoute(
                 builder: (context) => LeaderboardScreen(
@@ -142,12 +144,13 @@ class _PokerGameScreenState extends State<PokerGameScreen> {
           ),
           IconButton(
             icon: const Icon(Icons.exit_to_app),
-            tooltip: 'Ieși din joc',
+            tooltip: tr('game.leave'),
             onPressed: () {
               widget.args.onLeave();
               Navigator.of(context).popUntil((route) => route.isFirst);
             },
           ),
+          const LanguageButton(),
         ],
       ),
       body: SafeArea(
@@ -166,12 +169,12 @@ class _PokerGameScreenState extends State<PokerGameScreen> {
             if (_snapshot.lastHandSummary != null)
               Padding(
                 padding: const EdgeInsets.symmetric(horizontal: 16),
-                child: Text(_snapshot.lastHandSummary!,
+                child: Text(_snapshot.lastHandSummary!.resolve(),
                     textAlign: TextAlign.center,
                     style: const TextStyle(color: Colors.amberAccent, fontWeight: FontWeight.bold)),
               ),
             if (_snapshot.lastShowdown != null) _buildShowdown(),
-            Text('Pot: ${_snapshot.pot}', style: const TextStyle(color: Colors.white70, fontSize: 16)),
+            Text(tr('poker.pot', {'n': _snapshot.pot}), style: const TextStyle(color: Colors.white70, fontSize: 16)),
             const SizedBox(height: 8),
             _buildCommunityCards(),
             const Spacer(),
@@ -222,7 +225,7 @@ class _PokerGameScreenState extends State<PokerGameScreen> {
                 mainAxisSize: MainAxisSize.min,
                 children: s.cards.map((c) => PlayingCardWidget(card: c, width: 34)).toList(),
               ),
-              Text(s.handLabel, style: const TextStyle(color: Colors.white54, fontSize: 10)),
+              Text(s.handLabel.resolve(), style: const TextStyle(color: Colors.white54, fontSize: 10)),
               if (s.won > 0)
                 Text('+${s.won}', style: const TextStyle(color: Colors.lightGreenAccent, fontSize: 11, fontWeight: FontWeight.bold)),
             ],
@@ -235,7 +238,7 @@ class _PokerGameScreenState extends State<PokerGameScreen> {
   Widget _buildMeRow(PokerPlayerSummary me) {
     return Column(
       children: [
-        Text('${me.name} — ${me.chips} fise${me.betThisRound > 0 ? ' (pariat: ${me.betThisRound})' : ''}',
+        Text(tr('poker.meRow', {'name': me.name, 'chips': me.chips}) + (me.betThisRound > 0 ? tr('poker.betSuffix', {'n': me.betThisRound}) : ''),
             style: const TextStyle(color: Colors.white70, fontSize: 12)),
         const SizedBox(height: 6),
         Row(
@@ -248,7 +251,7 @@ class _PokerGameScreenState extends State<PokerGameScreen> {
 
   Widget _buildWaitingBar() {
     if (_snapshot.currentPlayerId == null) return const SizedBox(height: 40);
-    return Text('${_nameOf(_snapshot.currentPlayerId)} joacă...', style: const TextStyle(color: Colors.white54));
+    return Text(tr('game.isPlaying', {'name': _nameOf(_snapshot.currentPlayerId)}), style: const TextStyle(color: Colors.white54));
   }
 
   Widget _buildActionBar() {
@@ -348,15 +351,15 @@ class _PlayerChip extends StatelessWidget {
                 Text(player.name, style: const TextStyle(color: Colors.white, fontSize: 12, fontWeight: FontWeight.bold)),
               ],
             ),
-            Text('${player.chips} fise', style: const TextStyle(color: Colors.white70, fontSize: 11)),
+            Text(tr('poker.chips', {'n': player.chips}), style: const TextStyle(color: Colors.white70, fontSize: 11)),
             if (player.busted)
-              const Text('eliminat', style: TextStyle(color: Colors.redAccent, fontSize: 10))
+              Text(tr('poker.busted'), style: const TextStyle(color: Colors.redAccent, fontSize: 10))
             else if (player.folded)
-              const Text('a renunțat', style: TextStyle(color: Colors.white38, fontSize: 10))
+              Text(tr('poker.folded'), style: const TextStyle(color: Colors.white38, fontSize: 10))
             else if (player.allIn)
               const Text('all-in', style: TextStyle(color: Colors.orangeAccent, fontSize: 10, fontWeight: FontWeight.bold))
             else if (player.betThisRound > 0)
-              Text('pariat: ${player.betThisRound}', style: const TextStyle(color: Colors.amberAccent, fontSize: 10)),
+              Text(tr('poker.bet', {'n': player.betThisRound}), style: const TextStyle(color: Colors.amberAccent, fontSize: 10)),
           ],
         ),
       ),

@@ -7,6 +7,8 @@ import '../../models/card.dart';
 import '../../screens/leaderboard_screen.dart';
 import '../../widgets/playing_card_widget.dart';
 import 'war_snapshot.dart';
+import '../../l10n/tr.dart';
+import '../../widgets/language_button.dart';
 
 class WarGameScreen extends StatefulWidget {
   final GameSessionArgs args;
@@ -61,10 +63,10 @@ class _WarGameScreenState extends State<WarGameScreen> {
         context: context,
         barrierDismissible: false,
         builder: (context) => AlertDialog(
-          title: Text(isMe ? 'Ai câștigat! 🎉' : 'Joc terminat'),
+          title: Text(isMe ? tr('game.youWon') : tr('game.over')),
           content: Text(isMe
-              ? 'Ai luat toate cărțile din pachetul adversarului.'
-              : '${_snapshot.opponentName ?? 'Adversarul'} a luat toate cărțile.'),
+              ? tr('war.youTookAll')
+              : tr('war.theyTookAll', {'name': _snapshot.opponentName ?? tr('war.opponentThe')})),
           actions: [
             TextButton(
               onPressed: () {
@@ -73,7 +75,7 @@ class _WarGameScreenState extends State<WarGameScreen> {
                   ..pop()
                   ..popUntil((route) => route.isFirst);
               },
-              child: const Text('Înapoi la meniu'),
+              child: Text(tr('game.backToMenu')),
             ),
           ],
         ),
@@ -94,11 +96,11 @@ class _WarGameScreenState extends State<WarGameScreen> {
       backgroundColor: const Color(0xFF1B2A4A),
       appBar: AppBar(
         backgroundColor: const Color(0xFF121E38),
-        title: const Text('Război'),
+        title: Text(tr('game.war.title')),
         actions: [
           IconButton(
             icon: const Icon(Icons.leaderboard),
-            tooltip: 'Clasament și chat',
+            tooltip: tr('lobby.leaderboardAndChat'),
             onPressed: () => Navigator.of(context).push(
               MaterialPageRoute(
                 builder: (context) => LeaderboardScreen(
@@ -113,28 +115,29 @@ class _WarGameScreenState extends State<WarGameScreen> {
           ),
           IconButton(
             icon: const Icon(Icons.exit_to_app),
-            tooltip: 'Ieși din joc',
+            tooltip: tr('game.leave'),
             onPressed: () {
               widget.args.onLeave();
               Navigator.of(context).popUntil((route) => route.isFirst);
             },
           ),
+          const LanguageButton(),
         ],
       ),
       body: SafeArea(
         child: Column(
           children: [
             const SizedBox(height: 12),
-            _buildDeckLabel(_snapshot.opponentName ?? 'Adversar', _snapshot.opponentDeckCount),
+            _buildDeckLabel(_snapshot.opponentName ?? tr('war.opponent'), _snapshot.opponentDeckCount),
             const Spacer(),
             if (_snapshot.warPending)
-              const Padding(
-                padding: EdgeInsets.only(bottom: 12),
-                child: Text('RĂZBOI! Fiecare a pus o carte ascunsă — mai întoarce una.',
+              Padding(
+                padding: const EdgeInsets.only(bottom: 12),
+                child: Text(tr('war.warPending'),
                     textAlign: TextAlign.center,
-                    style: TextStyle(color: Colors.amberAccent, fontWeight: FontWeight.bold)),
+                    style: const TextStyle(color: Colors.amberAccent, fontWeight: FontWeight.bold)),
               ),
-            const Text('Ultima rundă', style: TextStyle(color: Colors.white38, fontSize: 12)),
+            Text(tr('war.lastRound'), style: const TextStyle(color: Colors.white38, fontSize: 12)),
             const SizedBox(height: 8),
             _buildLastRoundRow(),
             const SizedBox(height: 8),
@@ -142,18 +145,18 @@ class _WarGameScreenState extends State<WarGameScreen> {
             if (_snapshot.potCount > 0)
               Padding(
                 padding: const EdgeInsets.only(top: 8),
-                child: Text('Cărți în joc: ${_snapshot.potCount}', style: const TextStyle(color: Colors.white54)),
+                child: Text(tr('war.pot', {'n': _snapshot.potCount}), style: const TextStyle(color: Colors.white54)),
               ),
             const Spacer(),
             if (waitingForOpponent && _snapshot.myRevealedCard != null) _buildPendingCard(_snapshot.myRevealedCard!),
             const SizedBox(height: 8),
-            _buildDeckLabel('Tu', _snapshot.myDeckCount),
+            _buildDeckLabel(tr('war.you'), _snapshot.myDeckCount),
             const SizedBox(height: 16),
             SizedBox(
               width: 220,
               child: FilledButton.icon(
                 icon: const Icon(Icons.flip),
-                label: Text(waitingForOpponent ? 'Aștepți adversarul...' : 'Întoarce cartea'),
+                label: Text(waitingForOpponent ? tr('war.waiting') : tr('war.flip')),
                 onPressed: canFlip ? _flip : null,
               ),
             ),
@@ -165,7 +168,7 @@ class _WarGameScreenState extends State<WarGameScreen> {
   }
 
   Widget _buildDeckLabel(String name, int count) {
-    return Text('$name — $count cărți', style: const TextStyle(color: Colors.white70));
+    return Text(tr('war.deckLabel', {'name': name, 'n': count}), style: const TextStyle(color: Colors.white70));
   }
 
   Widget _buildLastRoundRow() {
@@ -187,7 +190,7 @@ class _WarGameScreenState extends State<WarGameScreen> {
   Widget _buildPendingCard(PlayingCard card) {
     return Column(
       children: [
-        const Text('Cartea ta', style: TextStyle(color: Colors.white38, fontSize: 12)),
+        Text(tr('war.yourCard'), style: const TextStyle(color: Colors.white38, fontSize: 12)),
         const SizedBox(height: 4),
         PlayingCardWidget(card: card, width: 60),
       ],
@@ -197,9 +200,9 @@ class _WarGameScreenState extends State<WarGameScreen> {
   Widget _buildLastRoundBanner() {
     final outcome = _snapshot.lastRoundOutcome;
     final text = switch (outcome) {
-      'win' => 'Ai câștigat runda anterioară!',
-      'lose' => 'Adversarul a câștigat runda anterioară.',
-      'war' => 'Runda anterioară a fost egalitate.',
+      'win' => tr('war.outcome.win'),
+      'lose' => tr('war.outcome.lose'),
+      'war' => tr('war.outcome.war'),
       _ => '',
     };
     final color = switch (outcome) {

@@ -9,6 +9,8 @@ import '../../widgets/playing_card_widget.dart';
 import 'macao_snapshot.dart';
 import 'opponent_widget.dart';
 import 'suit_picker_dialog.dart';
+import '../../l10n/tr.dart';
+import '../../widgets/language_button.dart';
 
 class MacaoGameScreen extends StatefulWidget {
   final GameSessionArgs args;
@@ -68,8 +70,8 @@ class _MacaoGameScreenState extends State<MacaoGameScreen> {
         context: context,
         barrierDismissible: false,
         builder: (context) => AlertDialog(
-          title: Text(isMe ? 'Ai câștigat! 🎉' : 'Joc terminat'),
-          content: Text('${_snapshot.winnerName} a scăpat primul de cărți.'),
+          title: Text(isMe ? tr('game.youWon') : tr('game.over')),
+          content: Text(tr('macao.winner', {'name': _snapshot.winnerName})),
           actions: [
             TextButton(
               onPressed: () {
@@ -78,7 +80,7 @@ class _MacaoGameScreenState extends State<MacaoGameScreen> {
                   ..pop()
                   ..popUntil((route) => route.isFirst);
               },
-              child: const Text('Înapoi la meniu'),
+              child: Text(tr('game.backToMenu')),
             ),
           ],
         ),
@@ -133,11 +135,11 @@ class _MacaoGameScreenState extends State<MacaoGameScreen> {
       backgroundColor: const Color(0xFF0B5E3B),
       appBar: AppBar(
         backgroundColor: const Color(0xFF08462C),
-        title: Text(_snapshot.isMyTurn ? 'Rândul tău' : 'Se joacă...'),
+        title: Text(_snapshot.isMyTurn ? tr('game.yourTurn') : tr('game.playing')),
         actions: [
           IconButton(
             icon: const Icon(Icons.leaderboard),
-            tooltip: 'Clasament și chat',
+            tooltip: tr('lobby.leaderboardAndChat'),
             onPressed: () => Navigator.of(context).push(
               MaterialPageRoute(
                 builder: (context) => LeaderboardScreen(
@@ -152,12 +154,13 @@ class _MacaoGameScreenState extends State<MacaoGameScreen> {
           ),
           IconButton(
             icon: const Icon(Icons.exit_to_app),
-            tooltip: 'Ieși din joc',
+            tooltip: tr('game.leave'),
             onPressed: () {
               widget.args.onLeave();
               Navigator.of(context).popUntil((route) => route.isFirst);
             },
           ),
+          const LanguageButton(),
         ],
       ),
       body: SafeArea(
@@ -179,7 +182,7 @@ class _MacaoGameScreenState extends State<MacaoGameScreen> {
               Padding(
                 padding: const EdgeInsets.only(bottom: 8),
                 child: Text(
-                  'Trebuie tras ${_snapshot.pendingDraw} — sau răspunde cu un 2 sau 3 care se leagă la număr sau culoare!',
+                  tr('macao.pendingDraw', {'n': _snapshot.pendingDraw}),
                   textAlign: TextAlign.center,
                   style: const TextStyle(color: Colors.amberAccent, fontWeight: FontWeight.bold),
                 ),
@@ -189,8 +192,8 @@ class _MacaoGameScreenState extends State<MacaoGameScreen> {
                 padding: const EdgeInsets.only(bottom: 8),
                 child: Text(
                   _snapshot.isMyTurn
-                      ? 'Trebuie să stai ${_snapshot.pendingSkip} tur(e) — sau răspunde cu o carte de 4!'
-                      : 'Așteaptă să stea ${_snapshot.pendingSkip} tur(e) sau să răspundă cu un 4.',
+                      ? tr('macao.mustSkip', {'n': _snapshot.pendingSkip})
+                      : tr('macao.waitSkip', {'n': _snapshot.pendingSkip}),
                   textAlign: TextAlign.center,
                   style: const TextStyle(color: Colors.amberAccent, fontWeight: FontWeight.bold),
                 ),
@@ -233,7 +236,7 @@ class _MacaoGameScreenState extends State<MacaoGameScreen> {
       width: 220,
       child: FilledButton.icon(
         icon: const Icon(Icons.style),
-        label: Text(_selectedCards.length == 1 ? 'Joacă' : 'Joacă ${_selectedCards.length} cărți'),
+        label: Text(_selectedCards.length == 1 ? tr('macao.play') : tr('macao.playN', {'n': _selectedCards.length})),
         onPressed: _playSelected,
       ),
     );
@@ -264,7 +267,7 @@ class _MacaoGameScreenState extends State<MacaoGameScreen> {
               const SizedBox(width: 70, height: 98),
             const SizedBox(height: 4),
             Text(
-              _snapshot.requestedSuit == null ? '' : 'Culoare: ${_snapshot.requestedSuit!.symbol}',
+              _snapshot.requestedSuit == null ? '' : tr('macao.requestedSuit', {'suit': _snapshot.requestedSuit!.symbol}),
               style: const TextStyle(color: Colors.white70),
             ),
           ],

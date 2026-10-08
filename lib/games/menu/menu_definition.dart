@@ -11,8 +11,6 @@ import 'menu_order_screen.dart';
 /// automat de server (vezi `MenuConnectScreen`/`EventServerService`).
 final GameDefinition menuDefinition = GameDefinition(
   id: 'menu',
-  title: 'Meniu',
-  subtitle: 'Comandă direct la bar de pe telefon — fără să chemi un chelner.',
   icon: Icons.restaurant_menu,
   accentColor: const Color(0xFF6B3F1D),
   minPlayers: MenuEngine.minPlayersStatic,

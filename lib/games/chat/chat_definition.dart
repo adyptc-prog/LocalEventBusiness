@@ -10,8 +10,6 @@ import 'chat_room_screen.dart';
 /// conectare/alăturare (`RoomBrowserScreen`/`LobbyScreen`).
 final GameDefinition chatDefinition = GameDefinition(
   id: 'chat',
-  title: 'Chat general',
-  subtitle: 'Discută cu oricine e conectat pe rețea acum, indiferent la ce joc participă.',
   icon: Icons.forum,
   accentColor: const Color(0xFF0E2A47),
   minPlayers: ChatEngine.minPlayersStatic,

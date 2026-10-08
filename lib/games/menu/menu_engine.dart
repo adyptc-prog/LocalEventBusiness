@@ -1,6 +1,7 @@
 import '../../core/game_engine.dart';
 import '../../core/menu_store.dart';
 import '../../core/order.dart';
+import '../../l10n/tr.dart';
 
 class _MenuPlayerInfo {
   final String id;
@@ -119,7 +120,7 @@ class MenuEngine extends GameEngine {
     if (type == 'submit_order') {
       _submitOrder(playerId, action);
     } else {
-      throw StateError('Acțiune necunoscută.');
+      throw GameError('err.unknownAction');
     }
   }
 
@@ -127,20 +128,20 @@ class MenuEngine extends GameEngine {
     final rawLabel = action['tableLabel'];
     final tableLabel = (rawLabel is String ? rawLabel : '').trim();
     if (tableLabel.isEmpty) {
-      throw StateError('Introdu numărul mesei înainte să trimiți comanda.');
+      throw GameError('err.menu.tableRequired');
     }
     if (tableLabel.length > maxTableLabelLength) {
-      throw StateError('Numărul mesei e prea lung.');
+      throw GameError('err.menu.tableTooLong');
     }
     final openOrders = _orders.where((o) =>
         o.customerId == playerId && (o.status == OrderStatus.placed || o.status == OrderStatus.preparing));
     if (openOrders.length >= maxOpenOrdersPerCustomer) {
-      throw StateError('Ai deja $maxOpenOrdersPerCustomer comenzi în așteptare — așteaptă să fie pregătite.');
+      throw GameError('err.menu.tooManyOpen', {'max': maxOpenOrdersPerCustomer});
     }
     final rawLinesValue = action['lines'];
     final rawLines = rawLinesValue is List ? rawLinesValue : const [];
     if (rawLines.length > maxLinesPerOrder) {
-      throw StateError('Comanda are prea multe produse.');
+      throw GameError('err.menu.tooManyLines');
     }
     final availableIds = MenuStore.instance.items.where((i) => i.available).map((i) => i.id).toSet();
     final lines = <OrderLine>[];
@@ -150,14 +151,14 @@ class MenuEngine extends GameEngine {
       final quantity = raw['quantity'];
       if (menuItemId is! String || quantity is! int || quantity <= 0) continue;
       if (quantity > maxQuantityPerLine) {
-        throw StateError('Maxim $maxQuantityPerLine bucăți dintr-un produs pe comandă.');
+        throw GameError('err.menu.maxQuantity', {'max': maxQuantityPerLine});
       }
       if (!availableIds.contains(menuItemId)) continue;
       final item = MenuStore.instance.items.firstWhere((i) => i.id == menuItemId);
       lines.add(OrderLine(menuItemId: item.id, name: item.name, quantity: quantity));
     }
     if (lines.isEmpty) {
-      throw StateError('Comanda e goală — alege cel puțin un produs disponibil.');
+      throw GameError('err.menu.empty');
     }
     final rawNote = action['note'];
     var note = rawNote is String ? rawNote.trim() : null;
