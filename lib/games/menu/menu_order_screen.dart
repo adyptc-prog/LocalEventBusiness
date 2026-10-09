@@ -64,6 +64,12 @@ class _MenuOrderScreenState extends State<MenuOrderScreen> {
       final raw = prefs.getString(_cartPrefsKey);
       if (raw == null || !mounted) return;
       final saved = jsonDecode(raw) as Map<String, dynamic>;
+      if (!menuCartIsFresh(saved['savedAt'])) {
+        // Coș uitat de altă dată (ex: clientul revine a doua zi) — nu-l mai
+        // readucem, ar fi doar o comandă veche nedorită.
+        await prefs.remove(_cartPrefsKey);
+        return;
+      }
       final cart = (saved['cart'] as Map? ?? const {}).map((k, v) => MapEntry(k as String, v as int));
       setState(() {
         _cart
@@ -84,6 +90,7 @@ class _MenuOrderScreenState extends State<MenuOrderScreen> {
         'cart': _cart,
         'table': _tableController.text.trim(),
         'note': _noteController.text,
+        'savedAt': DateTime.now().millisecondsSinceEpoch,
       }));
     } catch (_) {
       // fără stocare (ex: navigare privată) coșul rămâne doar în memorie
@@ -229,6 +236,7 @@ class _MenuOrderScreenState extends State<MenuOrderScreen> {
         'placed' => tr('menuOrder.status.placed'),
         'preparing' => tr('orders.status.preparing'),
         'ready' => tr('orders.status.ready'),
+        'delivered' => tr('orders.status.delivered'),
         'cancelled' => tr('orders.status.cancelled'),
         _ => status,
       };
@@ -237,6 +245,7 @@ class _MenuOrderScreenState extends State<MenuOrderScreen> {
         'placed' => Colors.white54,
         'preparing' => Colors.amberAccent,
         'ready' => Colors.lightGreenAccent,
+        'delivered' => Colors.lightBlueAccent,
         'cancelled' => Colors.redAccent,
         _ => Colors.white54,
       };
@@ -543,6 +552,17 @@ class _MenuOrderScreenState extends State<MenuOrderScreen> {
       ),
     );
   }
+}
+
+/// Cât timp rămâne valabil un coș netrimis, salvat în browser.
+const Duration menuCartMaxAge = Duration(hours: 6);
+
+/// `true` dacă un coș salvat la [savedAtMs] (milisecunde) e încă valabil.
+@visibleForTesting
+bool menuCartIsFresh(Object? savedAtMs, {DateTime? now}) {
+  if (savedAtMs is! int) return false;
+  final savedAt = DateTime.fromMillisecondsSinceEpoch(savedAtMs);
+  return (now ?? DateTime.now()).difference(savedAt) <= menuCartMaxAge;
 }
 
 /// Pagina mare a unui produs din meniu. Cantitatea e citită din coșul

@@ -47,6 +47,8 @@ class EventServerService {
   Stream<List<BillRequest>> get billsUpdates => const Stream.empty();
   List<BillRequest> get bills => const [];
   void handleBill(String billId) {}
+  int closeTable(String tableLabel) => 0;
+  int closeAllTables() => 0;
 
   Future<void> broadcastAnnouncement(String text) async {}
 

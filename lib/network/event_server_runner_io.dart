@@ -171,6 +171,16 @@ class EventServerRunner {
     _lastBills = const [];
   }
 
+  /// Barul închide toate mesele deodată (sfârșitul serii).
+  static void closeAllTables() {
+    FlutterForegroundTask.sendDataToTask(jsonEncode({'type': 'close_all_tables'}));
+  }
+
+  /// Barul închide masa [tableLabel] (comenzile ei trec în istoric).
+  static void closeTable(String tableLabel) {
+    FlutterForegroundTask.sendDataToTask(jsonEncode({'type': 'close_table', 'tableLabel': tableLabel}));
+  }
+
   /// Barul a dus nota la masă.
   static void handleBill(String billId) {
     FlutterForegroundTask.sendDataToTask(jsonEncode({'type': 'handle_bill', 'billId': billId}));
@@ -383,6 +393,12 @@ class _EventServerTaskHandler extends TaskHandler {
           break;
         case 'handle_bill':
           server.handleBill(decoded['billId'] as String);
+          break;
+        case 'close_table':
+          server.closeTable(decoded['tableLabel'] as String);
+          break;
+        case 'close_all_tables':
+          server.closeAllTables();
           break;
         case 'sync_activities':
           EventConfigStore.instance.applyRemote((decoded['activities'] as List).cast<String>());

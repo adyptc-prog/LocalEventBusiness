@@ -46,9 +46,10 @@ class MenuEngine extends GameEngine {
   static const int maxTableLabelLength = 20;
   static const int maxNoteLength = 200;
 
-  /// Câte comenzi încheiate (gata/anulate) păstrăm — cele mai vechi ies din
-  /// listă, ca memoria să nu crească nelimitat într-o seară lungă.
-  static const int maxClosedOrdersKept = 300;
+  /// Câte comenzi încheiate (închise/anulate) păstrăm în istoric — cele mai
+  /// vechi ies din listă, ca memoria să nu crească nelimitat într-o seară
+  /// lungă.
+  static const int maxClosedOrdersKept = 500;
 
   final List<_MenuPlayerInfo> _players = [];
   final List<Order> _orders = [];
@@ -161,7 +162,8 @@ class MenuEngine extends GameEngine {
         if (b.customerId == customerId) ...b.orderIds,
     };
     return _orders
-        .where((o) => o.customerId == customerId && o.status != OrderStatus.cancelled && !billed.contains(o.id))
+        .where((o) =>
+            o.customerId == customerId && o.status != OrderStatus.cancelled && !o.isClosed && !billed.contains(o.id))
         .toList();
   }
 
@@ -250,8 +252,7 @@ class MenuEngine extends GameEngine {
   void _pruneClosedOrders() {
     var closed = 0;
     for (var i = 0; i < _orders.length; i++) {
-      final s = _orders[i].status;
-      if (s != OrderStatus.ready && s != OrderStatus.cancelled) continue;
+      if (!_orders[i].isClosed && _orders[i].status != OrderStatus.cancelled) continue;
       closed++;
       if (closed > maxClosedOrdersKept) {
         _orders.removeAt(i);
@@ -261,8 +262,8 @@ class MenuEngine extends GameEngine {
   }
 
   /// Trece comanda [orderId] în starea imediat următoare firească
-  /// (nouă → în pregătire → livrată) — apelat de barman prin canalul de
-  /// comenzi (`EventServerService.advanceOrder`), niciodată de un client.
+  /// (nouă → în pregătire → gata → livrată) — apelat de barman prin canalul
+  /// de comenzi (`EventServerService.advanceOrder`), niciodată de un client.
   void advanceStatus(String orderId) {
     final index = _orders.indexWhere((o) => o.id == orderId);
     if (index == -1) return;
@@ -270,11 +271,89 @@ class MenuEngine extends GameEngine {
     final next = switch (current.status) {
       OrderStatus.placed => OrderStatus.preparing,
       OrderStatus.preparing => OrderStatus.ready,
-      OrderStatus.ready => OrderStatus.ready,
+      OrderStatus.ready => OrderStatus.delivered,
+      OrderStatus.delivered => OrderStatus.delivered,
       OrderStatus.cancelled => OrderStatus.cancelled,
     };
     _orders[index] = current.copyWith(status: next);
     _notifyOnly(current.customerId);
+  }
+
+  /// Închide toate mesele deodată (sfârșitul serii) — la fel ca [closeTable]
+  /// pentru fiecare masă cu comenzi deschise. Întoarce totalul încasat.
+  int closeAllTables() {
+    final keys = <String, String>{};
+    for (final o in _orders) {
+      if (!o.isClosed) keys.putIfAbsent(o.tableKey, () => o.tableLabel);
+    }
+    for (final b in _bills) {
+      if (!b.handled) keys.putIfAbsent(Order.tableKeyOf(b.tableLabel), () => b.tableLabel);
+    }
+    var total = 0;
+    for (final label in keys.values) {
+      total += closeTable(label);
+    }
+    return total;
+  }
+
+  /// Comenzile rămase deschise mai mult de [maxAge] (masa uitată neînchisă,
+  /// serverul pornit de ieri) trec singure în istoric, marcate „închise
+  /// automat" — clientul nu le mai vede și nu le mai primește pe notă, dar
+  /// barul le găsește în istoric ca neachitate. Cererile de notă la fel de
+  /// vechi sunt rezolvate. Întoarce câte comenzi au expirat.
+  int expireStale(Duration maxAge, {DateTime? now}) {
+    final current = now ?? DateTime.now();
+    final cutoff = current.subtract(maxAge);
+    final affected = <String>{};
+    var expired = 0;
+    for (var i = 0; i < _orders.length; i++) {
+      final o = _orders[i];
+      if (o.isClosed || !o.createdAt.isBefore(cutoff)) continue;
+      _orders[i] = o.copyWith(closedAt: current, autoClosed: true);
+      affected.add(o.customerId);
+      expired++;
+    }
+    for (var i = 0; i < _bills.length; i++) {
+      final b = _bills[i];
+      if (b.handled || !b.createdAt.isBefore(cutoff)) continue;
+      _bills[i] = b.markHandled();
+      affected.add(b.customerId);
+    }
+    if (affected.isEmpty) return 0;
+    _pruneClosedOrders();
+    _affected = affected;
+    notifyListeners();
+    return expired;
+  }
+
+  /// Închide masa [tableLabel]: toate comenzile ei încă deschise — de la
+  /// oricare client care a stat la ea, inclusiv unul plecat fără să ceară
+  /// nota — sunt marcate achitate și trec în istoric; cererile de notă ale
+  /// mesei sunt rezolvate. Întoarce totalul încasat (în subunități).
+  int closeTable(String tableLabel) {
+    final key = Order.tableKeyOf(tableLabel);
+    if (key.isEmpty) return 0;
+    final now = DateTime.now();
+    final affected = <String>{};
+    var total = 0;
+    for (var i = 0; i < _orders.length; i++) {
+      final o = _orders[i];
+      if (o.isClosed || o.tableKey != key) continue;
+      if (o.status != OrderStatus.cancelled) total += o.totalCents;
+      _orders[i] = o.copyWith(closedAt: now);
+      affected.add(o.customerId);
+    }
+    for (var i = 0; i < _bills.length; i++) {
+      final b = _bills[i];
+      if (b.handled || Order.tableKeyOf(b.tableLabel) != key) continue;
+      _bills[i] = b.markHandled();
+      affected.add(b.customerId);
+    }
+    if (affected.isEmpty) return 0;
+    _pruneClosedOrders();
+    _affected = affected;
+    notifyListeners();
+    return total;
   }
 
   void cancelOrder(String orderId) {
@@ -299,7 +378,7 @@ class MenuEngine extends GameEngine {
         'items': MenuStore.instance.items.map((i) => i.toJson()).toList(),
         'currency': MenuStore.instance.currency,
       },
-      'myOrders': _orders.where((o) => o.customerId == viewerId).map((o) => o.toJson()).toList(),
+      'myOrders': _orders.where((o) => o.customerId == viewerId && !o.isClosed).map((o) => o.toJson()).toList(),
       // Cât ar fi pe nota cerută acum, și ultima cerere de notă a clientului.
       'billableTotalCents': _unbilledOrdersOf(viewerId).fold<int>(0, (sum, o) => sum + o.totalCents),
       'myBill': _bills.where((b) => b.customerId == viewerId).firstOrNull?.toJson(),

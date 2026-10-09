@@ -25,6 +25,8 @@ class EventServerRunner {
   static List<BillRequest> get lastBills => const [];
   static Stream<List<BillRequest>> get billsUpdates => const Stream.empty();
   static void handleBill(String billId) {}
+  static void closeTable(String tableLabel) {}
+  static void closeAllTables() {}
 
   static void requestState() {}
 

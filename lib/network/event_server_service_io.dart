@@ -67,6 +67,7 @@ class EventServerService {
   RawDatagramSocket? _udp;
   Timer? _beaconTimer;
   Timer? _heartbeatTimer;
+  Timer? _expiryTimer;
 
   final Map<String, RoomSession> _rooms = {};
   final Map<WebSocketChannel, _ConnectionState> _connections = {};
@@ -203,6 +204,16 @@ class EventServerService {
   /// Barul a dus nota la masă.
   void handleBill(String billId) => _menuEngine.markBillHandled(billId);
 
+  /// Barul închide masa: comenzile ei sunt achitate și trec în istoric.
+  int closeTable(String tableLabel) => _menuEngine.closeTable(tableLabel);
+
+  /// Barul închide toate mesele (sfârșitul serii).
+  int closeAllTables() => _menuEngine.closeAllTables();
+
+  /// Trece în istoric comenzile rămase deschise prea mult (vezi
+  /// `MenuEngine.expireStale`) — rulat periodic cât timp serverul merge.
+  int expireStaleOrders({DateTime? now}) => _menuEngine.expireStale(OrdersStore.maxAge, now: now);
+
   /// Avansează statusul unei comenzi (nouă → în pregătire → gata) — apelată
   /// direct de `OrdersDashboardScreen` prin canalul de comenzi, niciodată de
   /// un client obișnuit prin WebSocket (vezi `MenuEngine`). Nu retrimite
@@ -229,6 +240,9 @@ class EventServerService {
   }
 
   Future<void> start() async {
+    // Limita de vechime a comenzilor se aplică și cât timp serverul rulează,
+    // nu doar la pornire (când `OrdersStore` filtrează ce încarcă).
+    _expiryTimer = Timer.periodic(const Duration(minutes: 10), (_) => expireStaleOrders());
     await _startHttpServer();
     await _startBeacon();
     _startHeartbeat();
@@ -692,6 +706,7 @@ class EventServerService {
   Future<void> stop() async {
     _beaconTimer?.cancel();
     _heartbeatTimer?.cancel();
+    _expiryTimer?.cancel();
     _udp?.close();
     for (final state in _connections.values) {
       await state.subscription?.cancel();
