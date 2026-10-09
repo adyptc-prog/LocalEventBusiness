@@ -170,4 +170,9 @@ const Map<String, (String, String)> gameStrings = {
   'bills.requestWithTotal': ('Cere nota ({amount})', 'Ask for the bill ({amount})'),
   'bills.pending': ('Ai cerut nota — ospătarul vine la masă', 'You asked for the bill — the waiter is coming'),
   'bills.waiterComing': ('Nota vine imediat.', 'The bill is on its way.'),
+  'menuOrder.tapHint': ('Atinge un produs ca să-l vezi mare, cu poza și toate detaliile.', 'Tap an item to see it large, with its photo and all the details.'),
+  'menuOrder.details.back': ('Înapoi la meniu', 'Back to menu'),
+  'menuOrder.details.less': ('Mai puțin', 'Fewer'),
+  'menuOrder.details.more': ('Mai mult', 'More'),
+  'menuOrder.details.inCart': ('{n} în coș · {amount}', '{n} in cart · {amount}'),
 };

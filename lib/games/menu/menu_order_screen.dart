@@ -11,6 +11,7 @@ import '../../widgets/language_button.dart';
 
 import '../../core/game_definition.dart';
 import '../../l10n/tr.dart';
+import 'menu_engine.dart';
 
 /// Ecranul clientului: răsfoiește meniul localului, își compune o comandă și
 /// vede live statusul comenzilor proprii — nimic din asta nu depinde de o
@@ -284,6 +285,18 @@ class _MenuOrderScreenState extends State<MenuOrderScreen> {
                     const SizedBox(height: 12),
                     _buildBillSection(),
                     const SizedBox(height: 16),
+                    Padding(
+                      padding: const EdgeInsets.only(bottom: 8),
+                      child: Row(
+                        children: [
+                          const Icon(Icons.touch_app, color: Colors.white38, size: 16),
+                          const SizedBox(width: 6),
+                          Expanded(
+                            child: Text(tr('menuOrder.tapHint'), style: const TextStyle(color: Colors.white38, fontSize: 12)),
+                          ),
+                        ],
+                      ),
+                    ),
                     for (final category in categories) ..._buildCategorySection(category, items),
                     ..._buildUncategorizedSection(categories, items),
                     if (_myOrders.isNotEmpty) ..._buildMyOrdersSection(),
@@ -349,6 +362,38 @@ class _MenuOrderScreenState extends State<MenuOrderScreen> {
     ];
   }
 
+  /// Câte bucăți dintr-un produs se pot pune pe o comandă — aceeași limită
+  /// pe care o aplică serverul (`MenuEngine.maxQuantityPerLine`).
+  static const int _maxQtyPerItem = MenuEngine.maxQuantityPerLine;
+
+  Widget _photoOrPlaceholder(String? photoUrl, {required BoxFit fit, double iconSize = 24}) {
+    final placeholder = ColoredBox(
+      color: Colors.white12,
+      child: Center(child: Icon(Icons.restaurant_menu, color: Colors.white38, size: iconSize)),
+    );
+    if (photoUrl == null) return placeholder;
+    return Image.network(photoUrl, fit: fit, errorBuilder: (context, error, stack) => placeholder);
+  }
+
+  /// Pagina mare a unui produs — poza pe toată lățimea ecranului (se poate
+  /// mări cu două degete), numele, prețul și descrierea completă, cu butoane
+  /// mari de cantitate legate direct de coș.
+  Future<void> _openItemDetails(Map<String, dynamic> item) {
+    final id = item['id'] as String;
+    return Navigator.of(context).push(MaterialPageRoute(
+      fullscreenDialog: true,
+      builder: (context) => _MenuItemDetailPage(
+        item: item,
+        photo: (fit, iconSize) => _photoOrPlaceholder(_photoUrl(item['photoFile'] as String?), fit: fit, iconSize: iconSize),
+        priceText: item['priceCents'] is int ? _price(item['priceCents'] as int) : null,
+        quantity: () => _cart[id] ?? 0,
+        maxQuantity: _maxQtyPerItem,
+        onChange: (delta) => _changeQty(id, delta),
+        lineTotal: (qty) => item['priceCents'] is int ? _price((item['priceCents'] as int) * qty) : null,
+      ),
+    ));
+  }
+
   Widget _buildItemTile(Map<String, dynamic> item) {
     final id = item['id'] as String;
     final available = item['available'] as bool? ?? true;
@@ -360,55 +405,55 @@ class _MenuOrderScreenState extends State<MenuOrderScreen> {
       child: Card(
         color: Colors.white10,
         margin: const EdgeInsets.only(bottom: 8),
-        child: Padding(
-          padding: const EdgeInsets.all(8),
-          child: Row(
-            children: [
-              ClipRRect(
-                borderRadius: BorderRadius.circular(8),
-                child: SizedBox(
-                  width: 56,
-                  height: 56,
-                  child: photoUrl == null
-                      ? const ColoredBox(color: Colors.white12, child: Icon(Icons.restaurant_menu, color: Colors.white38))
-                      : Image.network(
-                          photoUrl,
-                          fit: BoxFit.cover,
-                          errorBuilder: (context, error, stack) =>
-                              const ColoredBox(color: Colors.white12, child: Icon(Icons.restaurant_menu, color: Colors.white38)),
-                        ),
+        clipBehavior: Clip.antiAlias,
+        child: InkWell(
+          onTap: () => _openItemDetails(item),
+          child: Padding(
+            padding: const EdgeInsets.all(8),
+            child: Row(
+              children: [
+                ClipRRect(
+                  borderRadius: BorderRadius.circular(8),
+                  child: SizedBox(width: 76, height: 76, child: _photoOrPlaceholder(photoUrl, fit: BoxFit.cover)),
                 ),
-              ),
-              const SizedBox(width: 12),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(item['name'] as String, style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w600)),
-                    if (item['priceCents'] is int)
-                      Text(_price(item['priceCents'] as int),
-                          style: const TextStyle(color: Colors.amberAccent, fontWeight: FontWeight.bold, fontSize: 13)),
-                    if ((item['description'] as String?)?.isNotEmpty ?? false)
-                      Text(item['description'] as String, style: const TextStyle(color: Colors.white54, fontSize: 12)),
-                    if (!available) Text(tr('menuOrder.unavailable'), style: const TextStyle(color: Colors.orangeAccent, fontSize: 12)),
-                  ],
+                const SizedBox(width: 12),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(item['name'] as String,
+                          style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w600, fontSize: 15)),
+                      if (item['priceCents'] is int)
+                        Text(_price(item['priceCents'] as int),
+                            style: const TextStyle(color: Colors.amberAccent, fontWeight: FontWeight.bold, fontSize: 14)),
+                      if ((item['description'] as String?)?.isNotEmpty ?? false)
+                        Text(item['description'] as String,
+                            maxLines: 2,
+                            overflow: TextOverflow.ellipsis,
+                            style: const TextStyle(color: Colors.white54, fontSize: 12)),
+                      if (!available)
+                        Text(tr('menuOrder.unavailable'), style: const TextStyle(color: Colors.orangeAccent, fontSize: 12)),
+                    ],
+                  ),
                 ),
-              ),
-              if (available)
-                Row(
-                  children: [
-                    IconButton(
-                      icon: const Icon(Icons.remove_circle_outline, color: Colors.white70),
-                      onPressed: qty == 0 ? null : () => _changeQty(id, -1),
-                    ),
-                    Text('$qty', style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
-                    IconButton(
-                      icon: const Icon(Icons.add_circle_outline, color: Colors.lightGreenAccent),
-                      onPressed: () => _changeQty(id, 1),
-                    ),
-                  ],
-                ),
-            ],
+                if (available)
+                  Row(
+                    children: [
+                      IconButton(
+                        icon: const Icon(Icons.remove_circle_outline, color: Colors.white70),
+                        onPressed: qty == 0 ? null : () => _changeQty(id, -1),
+                      ),
+                      Text('$qty', style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
+                      IconButton(
+                        icon: const Icon(Icons.add_circle_outline, color: Colors.lightGreenAccent),
+                        onPressed: qty >= _maxQtyPerItem ? null : () => _changeQty(id, 1),
+                      ),
+                    ],
+                  )
+                else
+                  const Icon(Icons.chevron_right, color: Colors.white38),
+              ],
+            ),
           ),
         ),
       ),
@@ -494,6 +539,147 @@ class _MenuOrderScreenState extends State<MenuOrderScreen> {
               ),
             ),
           ],
+        ),
+      ),
+    );
+  }
+}
+
+/// Pagina mare a unui produs din meniu. Cantitatea e citită din coșul
+/// ecranului de meniu ([quantity]) și modificată prin [onChange], deci ce
+/// alegi aici apare imediat și în coș — la închidere nu se pierde nimic.
+class _MenuItemDetailPage extends StatefulWidget {
+  final Map<String, dynamic> item;
+  final Widget Function(BoxFit fit, double iconSize) photo;
+  final String? priceText;
+  final int Function() quantity;
+  final int maxQuantity;
+  final void Function(int delta) onChange;
+  final String? Function(int quantity) lineTotal;
+
+  const _MenuItemDetailPage({
+    required this.item,
+    required this.photo,
+    required this.priceText,
+    required this.quantity,
+    required this.maxQuantity,
+    required this.onChange,
+    required this.lineTotal,
+  });
+
+  @override
+  State<_MenuItemDetailPage> createState() => _MenuItemDetailPageState();
+}
+
+class _MenuItemDetailPageState extends State<_MenuItemDetailPage> {
+  void _change(int delta) {
+    widget.onChange(delta);
+    setState(() {});
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final item = widget.item;
+    final available = item['available'] as bool? ?? true;
+    final description = (item['description'] as String?)?.trim() ?? '';
+    final qty = widget.quantity();
+    final screen = MediaQuery.of(context).size;
+    final total = qty > 0 ? widget.lineTotal(qty) : null;
+
+    return Scaffold(
+      backgroundColor: const Color(0xFF101418),
+      appBar: AppBar(
+        backgroundColor: Colors.black26,
+        leading: IconButton(
+          icon: const Icon(Icons.close),
+          tooltip: tr('menuOrder.details.back'),
+          onPressed: () => Navigator.of(context).pop(),
+        ),
+        title: Text(item['name'] as String, maxLines: 1, overflow: TextOverflow.ellipsis),
+        actions: const [LanguageButton()],
+      ),
+      body: SafeArea(
+        child: ListView(
+          children: [
+            // Poza pe toată lățimea — cu două degete se poate mări.
+            ColoredBox(
+              color: Colors.black,
+              child: SizedBox(
+                height: (screen.height * 0.5).clamp(220.0, 560.0),
+                width: double.infinity,
+                child: InteractiveViewer(
+                  maxScale: 4,
+                  child: widget.photo(BoxFit.contain, 72),
+                ),
+              ),
+            ),
+            Padding(
+              padding: const EdgeInsets.fromLTRB(20, 20, 20, 24),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(item['name'] as String,
+                      style: const TextStyle(color: Colors.white, fontSize: 28, fontWeight: FontWeight.bold)),
+                  const SizedBox(height: 6),
+                  if (widget.priceText != null)
+                    Text(widget.priceText!,
+                        style: const TextStyle(color: Colors.amberAccent, fontSize: 24, fontWeight: FontWeight.bold)),
+                  if (!available)
+                    Padding(
+                      padding: const EdgeInsets.only(top: 8),
+                      child: Text(tr('menuOrder.unavailable'),
+                          style: const TextStyle(color: Colors.orangeAccent, fontSize: 18, fontWeight: FontWeight.w600)),
+                    ),
+                  if (description.isNotEmpty) ...[
+                    const SizedBox(height: 16),
+                    Text(description, style: const TextStyle(color: Colors.white70, fontSize: 18, height: 1.4)),
+                  ],
+                ],
+              ),
+            ),
+          ],
+        ),
+      ),
+      bottomNavigationBar: SafeArea(
+        top: false,
+        child: Container(
+          color: Colors.black45,
+          padding: const EdgeInsets.fromLTRB(16, 12, 16, 16),
+          child: Row(
+            children: [
+              if (available) ...[
+                IconButton.filledTonal(
+                  iconSize: 32,
+                  icon: const Icon(Icons.remove),
+                  tooltip: tr('menuOrder.details.less'),
+                  onPressed: qty == 0 ? null : () => _change(-1),
+                ),
+                SizedBox(
+                  width: 48,
+                  child: Text('$qty',
+                      textAlign: TextAlign.center,
+                      style: const TextStyle(color: Colors.white, fontSize: 26, fontWeight: FontWeight.bold)),
+                ),
+                IconButton.filled(
+                  iconSize: 32,
+                  icon: const Icon(Icons.add),
+                  tooltip: tr('menuOrder.details.more'),
+                  onPressed: qty >= widget.maxQuantity ? null : () => _change(1),
+                ),
+                const SizedBox(width: 12),
+              ],
+              Expanded(
+                child: FilledButton(
+                  style: FilledButton.styleFrom(minimumSize: const Size.fromHeight(52)),
+                  onPressed: () => Navigator.of(context).pop(),
+                  child: Text(
+                    total != null ? tr('menuOrder.details.inCart', {'n': qty, 'amount': total}) : tr('menuOrder.details.back'),
+                    textAlign: TextAlign.center,
+                  ),
+                ),
+              ),
+            ],
+          ),
         ),
       ),
     );
