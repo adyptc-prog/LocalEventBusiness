@@ -58,6 +58,8 @@ dependencies:
   path_provider: ^2.1.5
   # Generare de coduri QR local, fără nicio cerere de rețea
   qr_flutter: ^4.1.0
+  # Notificări cu sunet pe telefonul-server: comandă nouă / notă cerută
+  flutter_local_notifications: ^22.3.1
   # PDF-ul de tipărit cu codurile QR ale meselor (câte 6 cartonașe pe pagina A4)
   pdf: ^3.12.0
   # SHA-256 pentru id-ul public al jucătorului, derivat din id-ul secret de profil

@@ -14,6 +14,7 @@ import '../core/order.dart';
 import '../l10n/tr.dart';
 import '../core/orders_store.dart';
 import '../core/organizer_key_store.dart';
+import 'bar_notifications.dart';
 import 'event_server_service.dart';
 import 'lobby_room.dart';
 import 'participant_info.dart';
@@ -244,6 +245,7 @@ void _startCallback() {
 
 class _EventServerTaskHandler extends TaskHandler {
   EventServerService? _server;
+  final BarNotifications _notifications = BarNotifications();
   StreamSubscription? _roomsSub;
   StreamSubscription? _participantsSub;
   StreamSubscription? _moderationLogSub;
@@ -292,8 +294,19 @@ class _EventServerTaskHandler extends TaskHandler {
         'log': log.map((e) => e.toJson()).toList(),
       }));
     });
-    _ordersSub = server.ordersUpdates.listen(_sendOrders);
-    _billsSub = server.billsUpdates.listen(_sendBills);
+    try {
+      await _notifications.init(existingOrders: server.orders, existingBills: server.bills);
+    } catch (_) {
+      // fără notificări (plugin indisponibil) serverul merge mai departe
+    }
+    _ordersSub = server.ordersUpdates.listen((orders) {
+      _sendOrders(orders);
+      _notifications.onOrders(orders, MenuStore.instance.currency);
+    });
+    _billsSub = server.billsUpdates.listen((bills) {
+      _sendBills(bills);
+      _notifications.onBills(bills, MenuStore.instance.currency);
+    });
   }
 
   void _sendBills(List<BillRequest> bills) {

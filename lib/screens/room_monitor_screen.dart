@@ -73,6 +73,7 @@ class _RoomMonitorScreenState extends State<RoomMonitorScreen> {
       await _clientService.connect(host: host, port: port);
       _clientService.stopDiscovery();
       await _roomsSub?.cancel();
+      _rooms = _clientService.latestRooms ?? const [];
       _roomsSub = _clientService.rooms.listen((rooms) {
         if (!mounted) return;
         setState(() => _rooms = rooms);

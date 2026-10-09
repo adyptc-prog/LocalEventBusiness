@@ -39,7 +39,9 @@ class _EventConnectScreenState extends State<EventConnectScreen> {
   void initState() {
     super.initState();
     _clientService = ClientService();
-    if (!kIsWeb) {
+    if (kIsWeb) {
+      WidgetsBinding.instance.addPostFrameCallback((_) => _connectWebAddress());
+    } else {
       _clientService.startDiscovery();
       _serversSub = _clientService.discoveredServers.listen((servers) {
         if (!mounted) return;
@@ -66,7 +68,7 @@ class _EventConnectScreenState extends State<EventConnectScreen> {
     try {
       await _clientService.connect(host: host, port: port);
       _clientService.stopDiscovery();
-      final enabled = await _clientService.activities.first.timeout(const Duration(seconds: 5));
+      final enabled = await _clientService.waitForActivities().timeout(const Duration(seconds: 5));
       await _clientService.disconnect();
       if (!mounted) return;
       Navigator.of(context).pushReplacement(

@@ -189,4 +189,7 @@ const Map<String, (String, String)> screenStrings = {
   'bills.tableAsks': ('Masa {table} cere nota', 'Table {table} asks for the bill'),
   'bills.noAppOrders': ('fără comenzi din aplicație', 'no orders through the app'),
   'bills.markHandled': ('Am dus nota', 'Bill delivered'),
+  'notif.channel': ('Comenzi și note', 'Orders and bills'),
+  'notif.channelDesc': ('Sună când vine o comandă nouă sau o masă cere nota.', 'Rings when a new order comes in or a table asks for the bill.'),
+  'notif.newOrder': ('Comandă nouă — Masa {table}', 'New order — Table {table}'),
 };

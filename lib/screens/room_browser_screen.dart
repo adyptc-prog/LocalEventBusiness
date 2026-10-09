@@ -51,7 +51,13 @@ class _RoomBrowserScreenState extends State<RoomBrowserScreen> {
   void initState() {
     super.initState();
     _clientService = ClientService();
-    if (!kIsWeb) {
+    if (kIsWeb) {
+      // Adresa serverului e deja completată (pagina vine chiar de la el) —
+      // ne conectăm singuri dacă avem și numele, fără încă un tap.
+      if (_myName.isNotEmpty) {
+        WidgetsBinding.instance.addPostFrameCallback((_) => _connectWebAddress());
+      }
+    } else {
       _clientService.startDiscovery();
       _serversSub = _clientService.discoveredServers.listen((servers) {
         if (!mounted) return;
@@ -99,6 +105,9 @@ class _RoomBrowserScreenState extends State<RoomBrowserScreen> {
       await PlayerProfileStore.instance.updateName(_myName);
       await _clientService.connect(host: host, port: port);
       _clientService.stopDiscovery();
+      _rooms = (_clientService.latestRooms ?? const <LobbyRoom>[])
+          .where((r) => r.gameId == widget.definition.id)
+          .toList();
       _roomsSub = _clientService.rooms.listen((rooms) {
         if (!mounted) return;
         setState(() => _rooms = rooms.where((r) => r.gameId == widget.definition.id).toList());

@@ -31,32 +31,38 @@ class MainMenuScreen extends StatelessWidget {
         child: Column(
           children: [
             Padding(
-              padding: const EdgeInsets.fromLTRB(24, 32, 24, 8),
-              child: Row(
+              padding: const EdgeInsets.fromLTRB(24, 24, 24, 8),
+              child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        const Icon(Icons.hub, size: 48, color: Colors.white),
-                        const SizedBox(height: 12),
-                        const Text('LocalEventBusiness',
-                            style: TextStyle(fontSize: 32, fontWeight: FontWeight.bold, color: Colors.white)),
-                        Text(tr('mainMenu.tagline'),
-                            style: const TextStyle(color: Colors.white54)),
-                      ],
-                    ),
+                  // Butoanele stau pe rândul iconiței, ca titlul să aibă toată
+                  // lățimea ecranului pentru el.
+                  Row(
+                    children: [
+                      const Icon(Icons.hub, size: 44, color: Colors.white),
+                      const Spacer(),
+                      const LanguageButton(),
+                      const SizedBox(width: 4),
+                      IconButton.filledTonal(
+                        icon: const Icon(Icons.leaderboard),
+                        tooltip: tr('mainMenu.leaderboard'),
+                        onPressed: () => Navigator.of(context).push(
+                          MaterialPageRoute(builder: (context) => const LeaderboardScreen()),
+                        ),
+                      ),
+                    ],
                   ),
-                  const LanguageButton(),
-                  const SizedBox(width: 4),
-                  IconButton.filledTonal(
-                    icon: const Icon(Icons.leaderboard),
-                    tooltip: tr('mainMenu.leaderboard'),
-                    onPressed: () => Navigator.of(context).push(
-                      MaterialPageRoute(builder: (context) => const LeaderboardScreen()),
-                    ),
+                  const SizedBox(height: 12),
+                  // Pe un ecran îngust titlul se micșorează, nu se rupe.
+                  const FittedBox(
+                    fit: BoxFit.scaleDown,
+                    alignment: Alignment.centerLeft,
+                    child: Text('LocalEventBusiness',
+                        maxLines: 1,
+                        style: TextStyle(fontSize: 32, fontWeight: FontWeight.bold, color: Colors.white)),
                   ),
+                  const SizedBox(height: 4),
+                  Text(tr('mainMenu.tagline'), style: const TextStyle(color: Colors.white54)),
                 ],
               ),
             ),

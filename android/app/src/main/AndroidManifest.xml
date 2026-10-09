@@ -8,6 +8,9 @@
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE_DATA_SYNC"/>
     <!-- Pentru pozele de produse din meniu (captură cu camera, image_picker). -->
     <uses-permission android:name="android.permission.CAMERA"/>
+    <!-- Notificări cu sunet pe telefonul-server: comandă nouă, notă cerută. -->
+    <uses-permission android:name="android.permission.POST_NOTIFICATIONS"/>
+    <uses-permission android:name="android.permission.VIBRATE"/>
     <application
         android:label="LocalEventBusiness"
         android:name="${applicationName}"

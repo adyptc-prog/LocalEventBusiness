@@ -1,7 +1,9 @@
 import 'dart:async';
+import 'dart:convert';
 
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 import '../../l10n/money.dart';
 import '../../screens/main_menu_screen.dart';
@@ -37,6 +39,11 @@ class _MenuOrderScreenState extends State<MenuOrderScreen> {
   bool _submitting = false;
   String? _error;
 
+  /// Coșul încă netrimis (produse, notă, masă) e păstrat pe telefonul
+  /// clientului, ca să nu se piardă dacă închide browserul sau ecranul se
+  /// reîncarcă înainte să trimită comanda.
+  static const String _cartPrefsKey = 'menu_cart_v1';
+
   @override
   void initState() {
     super.initState();
@@ -45,6 +52,41 @@ class _MenuOrderScreenState extends State<MenuOrderScreen> {
       if (!mounted) return;
       setState(() => _snapshot = snap);
     });
+    _noteController.addListener(_saveCart);
+    _tableController.addListener(_saveCart);
+    _restoreCart();
+  }
+
+  Future<void> _restoreCart() async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final raw = prefs.getString(_cartPrefsKey);
+      if (raw == null || !mounted) return;
+      final saved = jsonDecode(raw) as Map<String, dynamic>;
+      final cart = (saved['cart'] as Map? ?? const {}).map((k, v) => MapEntry(k as String, v as int));
+      setState(() {
+        _cart
+          ..clear()
+          ..addAll(cart);
+        if (_tableController.text.isEmpty) _tableController.text = saved['table'] as String? ?? '';
+        if (_noteController.text.isEmpty) _noteController.text = saved['note'] as String? ?? '';
+      });
+    } catch (_) {
+      // coș salvat corupt sau stocare indisponibilă — pornim cu coșul gol
+    }
+  }
+
+  Future<void> _saveCart() async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.setString(_cartPrefsKey, jsonEncode({
+        'cart': _cart,
+        'table': _tableController.text.trim(),
+        'note': _noteController.text,
+      }));
+    } catch (_) {
+      // fără stocare (ex: navigare privată) coșul rămâne doar în memorie
+    }
   }
 
   @override
@@ -142,6 +184,7 @@ class _MenuOrderScreenState extends State<MenuOrderScreen> {
         _cart[itemId] = next;
       }
     });
+    _saveCart();
   }
 
   Future<void> _submit() async {
@@ -167,6 +210,7 @@ class _MenuOrderScreenState extends State<MenuOrderScreen> {
     setState(() {
       _cart.clear();
       _noteController.clear();
+      _saveCart();
       _submitting = false;
     });
     if (mounted) {

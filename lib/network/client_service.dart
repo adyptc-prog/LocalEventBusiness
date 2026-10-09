@@ -94,6 +94,19 @@ class ClientService {
   Stream<List<String>> get activities => _activitiesController.stream;
   final _activitiesController = StreamController<List<String>>.broadcast();
 
+  /// Ultimele activități / camere primite. Serverul le trimite imediat după
+  /// conectare — uneori (Safari) înainte ca ecranul să apuce să asculte
+  /// fluxurile de mai sus, deci un ecran le citește de aici, nu așteaptă
+  /// un mesaj care a trecut deja.
+  List<String>? latestActivities;
+  List<LobbyRoom>? latestRooms;
+
+  /// Activitățile activate de organizator — imediat, dacă au sosit deja.
+  Future<List<String>> waitForActivities() {
+    final cached = latestActivities;
+    return cached != null ? Future.value(cached) : activities.first;
+  }
+
   final _errorController = StreamController<String>.broadcast();
   Stream<String> get errors => _errorController.stream;
 
@@ -156,10 +169,13 @@ class ClientService {
             final list = (msg['rooms'] as List)
                 .map((r) => LobbyRoom.fromJson(Map<String, dynamic>.from(r as Map)))
                 .toList();
+            latestRooms = list;
             _roomsController.add(list);
             break;
           case 'activities':
-            _activitiesController.add((msg['activities'] as List).cast<String>());
+            final activityIds = (msg['activities'] as List).cast<String>();
+            latestActivities = activityIds;
+            _activitiesController.add(activityIds);
             break;
           case 'joined':
             final gameId = msg['gameId'] as String?;
