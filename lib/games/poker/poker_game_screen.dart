@@ -260,7 +260,9 @@ class _PokerGameScreenState extends State<PokerGameScreen> {
     final toCall = _snapshot.amountToCall(myId);
     final minRaise = _snapshot.minRaiseTotal.clamp(0, me.chips + me.betThisRound);
     final maxRaise = me.chips + me.betThisRound;
-    final canRaise = maxRaise > _snapshot.currentBet && me.chips > toCall;
+    final canRaise = _snapshot.raiseAllowed && maxRaise > _snapshot.currentBet && me.chips > toCall;
+    // All-in peste suma de egalat e tot o ridicare.
+    final canAllIn = _snapshot.raiseAllowed || me.chips <= toCall;
     _raiseAmount ??= minRaise;
 
     return Column(
@@ -302,11 +304,12 @@ class _PokerGameScreenState extends State<PokerGameScreen> {
                 onPressed: () => _act('raise', amount: _raiseAmount),
                 child: const Text('Raise'),
               ),
-            OutlinedButton(
-              style: OutlinedButton.styleFrom(foregroundColor: Colors.amberAccent, side: const BorderSide(color: Colors.amberAccent)),
-              onPressed: () => _act('all_in'),
-              child: const Text('All-in'),
-            ),
+            if (canAllIn)
+              OutlinedButton(
+                style: OutlinedButton.styleFrom(foregroundColor: Colors.amberAccent, side: const BorderSide(color: Colors.amberAccent)),
+                onPressed: () => _act('all_in'),
+                child: const Text('All-in'),
+              ),
           ],
         ),
       ],

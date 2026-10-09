@@ -22,8 +22,13 @@ import '../../l10n/tr.dart';
 /// toate deodată, într-o singură mutare — e nevoie doar ca prima să fie
 /// jucabilă normal; efectele cărților speciale din pachet (trageri, tururi
 /// de stat pe loc) se adună pentru toate.
+///
+/// Cine rămâne cu o singură carte trebuie să anunțe „Macao!" odată cu
+/// mutarea; dacă uită, oricare alt jucător îl poate prinde până începe tura
+/// următoare, iar cel prins trage [lastCardPenalty] cărți.
 class MacaoEngine extends GameEngine {
   static const int startingHandSize = 5;
+  static const int lastCardPenalty = 5;
   static const int minPlayersStatic = 2;
   static const int maxPlayersStatic = 4;
 
@@ -40,6 +45,10 @@ class MacaoEngine extends GameEngine {
   int pendingDraw = 0;
   int pendingSkip = 0;
   String? winnerId;
+
+  /// Jucătorul rămas cu o carte fără să fi anunțat „Macao!" — poate fi prins
+  /// de ceilalți până când jucătorul următor își începe tura.
+  String? unannouncedLastCardId;
 
   @override
   bool started = false;
@@ -97,7 +106,9 @@ class MacaoEngine extends GameEngine {
     for (final p in players) {
       p.hand = _drawPile.take(startingHandSize).toList();
       _drawPile = _drawPile.skip(startingHandSize).toList();
+      p.skipTurns = 0;
     }
+    unannouncedLastCardId = null;
 
     // Prima carte de pe foc nu poate fi Asul ("wild"), altfel jocul ar
     // începe cerând deja alegerea unei culori fără niciun jucător activ.
@@ -151,10 +162,16 @@ class MacaoEngine extends GameEngine {
             .toList();
         final chosenSuitName = action['chosenSuit'] as String?;
         final chosenSuit = chosenSuitName == null ? null : Suit.values.byName(chosenSuitName);
-        _playCards(playerId, cards, chosenSuit: chosenSuit);
+        _playCards(playerId, cards, chosenSuit: chosenSuit, announced: action['announce'] == true);
         break;
       case 'draw_card':
         _drawCard(playerId);
+        break;
+      case 'announce_last_card':
+        _announceLate(playerId);
+        break;
+      case 'catch_last_card':
+        _catchLastCard(playerId);
         break;
       default:
         throw GameError('err.unknownAction');
@@ -165,7 +182,7 @@ class MacaoEngine extends GameEngine {
   /// valoare, iar prima trebuie să fie o mutare validă în mod normal (restul
   /// se leagă automat de ea, fiind la fel). Efectele cărților speciale
   /// (trageri, sărituri de tură) se adună pentru toate cărțile jucate.
-  void _playCards(String playerId, List<PlayingCard> cards, {Suit? chosenSuit}) {
+  void _playCards(String playerId, List<PlayingCard> cards, {Suit? chosenSuit, bool announced = false}) {
     if (cards.isEmpty) throw GameError('err.noCardsToPlay');
     if (cards.any((c) => c.rank != cards.first.rank)) {
       throw GameError('err.sameRankOnly');
@@ -181,6 +198,7 @@ class MacaoEngine extends GameEngine {
     for (final card in cards) {
       if (!player.hand.contains(card)) throw GameError('err.notYourCard');
     }
+    _closeCatchWindow(playerId);
     for (final card in cards) {
       player.hand.remove(card);
       discardPile.add(card);
@@ -211,6 +229,8 @@ class MacaoEngine extends GameEngine {
       return;
     }
 
+    if (player.hand.length == 1 && !announced) unannouncedLastCardId = playerId;
+
     // Jucătorul următor preia povara (dacă e cazul): fie se apără cu propriile
     // cărți de 4 (adunând mai departe la pendingSkip), fie o acceptă integral
     // data viitoare când trage — vezi _drawCard.
@@ -239,18 +259,20 @@ class MacaoEngine extends GameEngine {
   void _drawCard(String playerId) {
     if (!started || winnerId != null) throw GameError('err.gameNotActive');
     if (currentPlayer?.id != playerId) throw GameError('err.notYourTurn');
+    _closeCatchWindow(playerId);
+    final player = _requirePlayer(playerId);
 
     // Nu are (sau nu vrea să joace) o carte de 4 — acceptă să stea pe loc
-    // atâtea tururi cât s-a acumulat, fără să tragă nicio carte.
+    // atâtea tururi *ale lui* cât s-a acumulat: tura curentă e prima, restul
+    // se consumă de fiecare dată când rândul ar ajunge din nou la el.
     if (pendingSkip > 0) {
-      final steps = pendingSkip;
+      player.skipTurns = pendingSkip - 1;
       pendingSkip = 0;
-      _advanceTurn(steps);
+      _advanceTurn(1);
       notifyListeners();
       return;
     }
 
-    final player = _requirePlayer(playerId);
     final count = pendingDraw > 0 ? pendingDraw : 1;
     // Cu pachetul complet epuizat, jucătorul trage cât se poate (posibil
     // nimic) și tura merge mai departe — altfel partida s-ar bloca.
@@ -279,10 +301,46 @@ class MacaoEngine extends GameEngine {
     return _drawPile.removeLast();
   }
 
+  /// Trece rândul la următorul jucător, sărind peste cei care mai au tururi
+  /// de stat pe loc (consumându-le câte unul).
   void _advanceTurn(int steps) {
     final n = players.length;
     if (n == 0) return;
-    currentPlayerIndex = (currentPlayerIndex + steps) % n;
+    for (var s = 0; s < steps; s++) {
+      currentPlayerIndex = (currentPlayerIndex + 1) % n;
+      while (players[currentPlayerIndex].skipTurns > 0) {
+        players[currentPlayerIndex].skipTurns--;
+        currentPlayerIndex = (currentPlayerIndex + 1) % n;
+      }
+    }
+  }
+
+  /// Fereastra în care cineva poate fi prins că n-a anunțat „Macao!" se
+  /// închide când alt jucător își începe tura.
+  void _closeCatchWindow(String actingPlayerId) {
+    if (unannouncedLastCardId != null && unannouncedLastCardId != actingPlayerId) {
+      unannouncedLastCardId = null;
+    }
+  }
+
+  void _announceLate(String playerId) {
+    if (!started || winnerId != null) throw GameError('err.gameNotActive');
+    if (unannouncedLastCardId != playerId) throw GameError('err.lastCard.nothingToAnnounce');
+    unannouncedLastCardId = null;
+    notifyListeners();
+  }
+
+  void _catchLastCard(String catcherId) {
+    if (!started || winnerId != null) throw GameError('err.gameNotActive');
+    final target = unannouncedLastCardId;
+    if (target == null || target == catcherId) throw GameError('err.lastCard.nobodyToCatch');
+    _requirePlayer(catcherId);
+    final player = _requirePlayer(target);
+    for (var i = 0; i < lastCardPenalty && _canDraw; i++) {
+      player.hand.add(_drawFromPile());
+    }
+    unannouncedLastCardId = null;
+    notifyListeners();
   }
 
   @override
@@ -311,5 +369,6 @@ class MacaoEngine extends GameEngine {
         pendingSkip: pendingSkip,
         winnerId: winnerId,
         started: started,
+        unannouncedLastCardId: unannouncedLastCardId,
       ).toJson();
 }

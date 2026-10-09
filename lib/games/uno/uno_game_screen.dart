@@ -11,6 +11,7 @@ import 'uno_opponent_widget.dart';
 import 'uno_snapshot.dart';
 import '../../l10n/tr.dart';
 import '../../widgets/language_button.dart';
+import '../../widgets/last_card_call.dart';
 
 class UnoGameScreen extends StatefulWidget {
   final GameSessionArgs args;
@@ -27,6 +28,7 @@ class _UnoGameScreenState extends State<UnoGameScreen> {
   StreamSubscription? _stateSub;
   StreamSubscription? _errorSub;
   bool _winnerDialogShown = false;
+  bool _announce = false;
 
   @override
   void initState() {
@@ -94,7 +96,9 @@ class _UnoGameScreenState extends State<UnoGameScreen> {
       'type': 'play_card',
       'card': card.toJson(),
       if (chosenColor != null) 'chosenColor': chosenColor.name,
+      if (_announce) 'announce': true,
     });
+    if (mounted) setState(() => _announce = false);
   }
 
   void _handleDrawTap() {
@@ -175,6 +179,23 @@ class _UnoGameScreenState extends State<UnoGameScreen> {
                   style: OutlinedButton.styleFrom(foregroundColor: Colors.white, side: const BorderSide(color: Colors.white70)),
                   onPressed: _handlePassTap,
                   child: Text(tr('uno.pass')),
+                ),
+              ),
+            LastCardCallBar(
+              word: tr('uno.callWord'),
+              myId: _snapshot.viewerId,
+              unannouncedId: _snapshot.unannouncedLastCardId,
+              nameOf: (id) => _snapshot.players.firstWhere((p) => p.id == id, orElse: () => me).name,
+              onAnnounce: () => widget.args.onAction({'type': 'announce_last_card'}),
+              onCatch: () => widget.args.onAction({'type': 'catch_last_card'}),
+            ),
+            if (_snapshot.isMyTurn && _snapshot.myHand.length == 2)
+              Padding(
+                padding: const EdgeInsets.only(bottom: 6),
+                child: LastCardAnnounceChip(
+                  word: tr('uno.callWord'),
+                  selected: _announce,
+                  onChanged: (v) => setState(() => _announce = v),
                 ),
               ),
             Text(me.name, style: const TextStyle(color: Colors.white70, fontSize: 12)),

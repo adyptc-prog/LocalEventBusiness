@@ -11,6 +11,7 @@ import 'opponent_widget.dart';
 import 'suit_picker_dialog.dart';
 import '../../l10n/tr.dart';
 import '../../widgets/language_button.dart';
+import '../../widgets/last_card_call.dart';
 
 class MacaoGameScreen extends StatefulWidget {
   final GameSessionArgs args;
@@ -31,6 +32,7 @@ class _MacaoGameScreenState extends State<MacaoGameScreen> {
   /// Cărțile alese pentru a fi jucate deodată — toate trebuie să aibă
   /// aceeași valoare; se joacă efectiv doar la apăsarea „Joacă”.
   final Set<PlayingCard> _selectedCards = {};
+  bool _announce = false;
 
   @override
   void initState() {
@@ -118,8 +120,14 @@ class _MacaoGameScreenState extends State<MacaoGameScreen> {
       'type': 'play_card',
       'cards': cards.map((c) => c.toJson()).toList(),
       if (chosenSuit != null) 'chosenSuit': chosenSuit.name,
+      if (_announce) 'announce': true,
     });
-    if (mounted) setState(() => _selectedCards.clear());
+    if (mounted) {
+      setState(() {
+        _selectedCards.clear();
+        _announce = false;
+      });
+    }
   }
 
   void _handleDrawTap() {
@@ -198,6 +206,14 @@ class _MacaoGameScreenState extends State<MacaoGameScreen> {
                   style: const TextStyle(color: Colors.amberAccent, fontWeight: FontWeight.bold),
                 ),
               ),
+            LastCardCallBar(
+              word: tr('macao.callWord'),
+              myId: _snapshot.viewerId,
+              unannouncedId: _snapshot.unannouncedLastCardId,
+              nameOf: (id) => _snapshot.players.firstWhere((p) => p.id == id, orElse: () => me).name,
+              onAnnounce: () => widget.args.onAction({'type': 'announce_last_card'}),
+              onCatch: () => widget.args.onAction({'type': 'catch_last_card'}),
+            ),
             Text(me.name, style: const TextStyle(color: Colors.white70, fontSize: 12)),
             _buildHand(me.hand ?? const []),
             const SizedBox(height: 8),
@@ -232,13 +248,28 @@ class _MacaoGameScreenState extends State<MacaoGameScreen> {
   }
 
   Widget _buildPlayBar() {
-    return SizedBox(
-      width: 220,
-      child: FilledButton.icon(
-        icon: const Icon(Icons.style),
-        label: Text(_selectedCards.length == 1 ? tr('macao.play') : tr('macao.playN', {'n': _selectedCards.length})),
-        onPressed: _playSelected,
-      ),
+    final leavesOneCard = (_snapshot.me.hand?.length ?? 0) - _selectedCards.length == 1;
+    return Column(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        if (leavesOneCard)
+          Padding(
+            padding: const EdgeInsets.only(bottom: 6),
+            child: LastCardAnnounceChip(
+              word: tr('macao.callWord'),
+              selected: _announce,
+              onChanged: (v) => setState(() => _announce = v),
+            ),
+          ),
+        SizedBox(
+          width: 220,
+          child: FilledButton.icon(
+            icon: const Icon(Icons.style),
+            label: Text(_selectedCards.length == 1 ? tr('macao.play') : tr('macao.playN', {'n': _selectedCards.length})),
+            onPressed: _playSelected,
+          ),
+        ),
+      ],
     );
   }
 

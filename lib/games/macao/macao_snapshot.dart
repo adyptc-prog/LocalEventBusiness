@@ -54,6 +54,7 @@ class MacaoSnapshot {
   final int pendingSkip;
   final String? winnerId;
   final bool started;
+  final String? unannouncedLastCardId;
 
   const MacaoSnapshot({
     required this.viewerId,
@@ -66,6 +67,7 @@ class MacaoSnapshot {
     required this.pendingSkip,
     required this.winnerId,
     required this.started,
+    this.unannouncedLastCardId,
   });
 
   PlayerSummary get me => players.firstWhere((p) => p.id == viewerId);
@@ -106,6 +108,7 @@ class MacaoSnapshot {
         'pendingSkip': pendingSkip,
         'winnerId': winnerId,
         'started': started,
+        'unannouncedLastCardId': unannouncedLastCardId,
       };
 
   factory MacaoSnapshot.fromJson(Map<String, dynamic> json) => MacaoSnapshot(
@@ -125,5 +128,6 @@ class MacaoSnapshot {
         pendingSkip: json['pendingSkip'] as int? ?? 0,
         winnerId: json['winnerId'] as String?,
         started: json['started'] as bool,
+        unannouncedLastCardId: json['unannouncedLastCardId'] as String?,
       );
 }

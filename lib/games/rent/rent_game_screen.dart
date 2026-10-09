@@ -238,7 +238,10 @@ class _RentGameScreenState extends State<RentGameScreen> {
             Text(tr('rent.isChoosing', {'name': _nameOf(_snapshot.chooserId)}), style: const TextStyle(color: Colors.white70)),
           const SizedBox(height: 20),
           Text(
-            tr('rent.played', {'list': _snapshot.usedCategories.map((c) => rentCategoryLabel(c)).join(', ').ifEmpty('—')}),
+            tr('rent.playedBy', {
+              'name': _nameOf(_snapshot.chooserId),
+              'list': _snapshot.usedCategories.map((c) => rentCategoryLabel(c)).join(', ').ifEmpty('—'),
+            }),
             style: const TextStyle(color: Colors.white38, fontSize: 12),
             textAlign: TextAlign.center,
           ),

@@ -33,11 +33,13 @@ class _RoundResult {
 }
 
 /// Motorul jocului Rent — exact 4 jucători, pachet de 32 de cărți (7-A),
-/// 8 în mâna fiecăruia. 6 categorii, jucate câte una pe rundă, alese pe
-/// rând de fiecare jucător (rotație, fără repetare): 4 sunt jocuri de
-/// levată fără atu (Popa roșu, Dame, Romburi, Totale — penalizare; Imperiale
-/// — aceleași cărți, dar bonus), iar "Rent" e o cursă separată de scăpat
-/// cărțile, construind câte o secvență per culoare pornind de la 10.
+/// 8 în mâna fiecăruia. Jucătorii aleg pe rând categoria rundei, iar
+/// fiecare jucător alege fiecare categorie exact o dată — deci partida are
+/// `jucători × categorii` runde și nimeni nu e avantajat la alegere. Jocurile
+/// de levată sunt fără atu (Popa roșu, Dame, Romburi, Levate, Totale —
+/// penalizare; Imperiale — aceleași cărți, dar bonus), iar "Rent" e o cursă
+/// separată de scăpat cărțile, construind câte o secvență per culoare
+/// pornind de la 10.
 class RentEngine extends GameEngine {
   static const int minPlayersStatic = 4;
   static const int maxPlayersStatic = 4;
@@ -58,7 +60,8 @@ class RentEngine extends GameEngine {
   bool isDraw = false;
 
   final List<_RentPlayerInfo> _players = [];
-  final Set<String> _usedCategories = {};
+  /// Categoriile alese deja de fiecare jucător.
+  final Map<String, Set<String>> _usedByPlayer = {};
   int _chooserIndex = 0;
   String? _activeCategory;
   bool _choosingCategory = true;
@@ -111,7 +114,9 @@ class RentEngine extends GameEngine {
     if (_players.length != minPlayers) {
       throw GameError('err.playersExact', {'n': minPlayers});
     }
-    _usedCategories.clear();
+    _usedByPlayer
+      ..clear()
+      ..addEntries(_players.map((p) => MapEntry(p.id, <String>{})));
     _chooserIndex = 0;
     _cumulativeScore
       ..clear()
@@ -178,7 +183,7 @@ class RentEngine extends GameEngine {
     if (!started || !_choosingCategory) throw GameError('err.rent.notChoosingPhase');
     if (_players[_chooserIndex].id != playerId) throw GameError('err.rent.notYourChoice');
     if (!kRentCategories.contains(category)) throw GameError('err.rent.unknownCategory');
-    if (_usedCategories.contains(category)) throw GameError('err.rent.categoryUsed');
+    if (_usedByPlayer[playerId]!.contains(category)) throw GameError('err.rent.categoryUsed');
     _activeCategory = category;
     _choosingCategory = false;
     _startRound(category);
@@ -247,10 +252,16 @@ class RentEngine extends GameEngine {
       for (final c in captured) {
         score += _cardScoreFor(_activeCategory!, c);
       }
+      if (_activeCategory == 'levate' || _activeCategory == 'totale') {
+        score += _trickPenalty * (captured.length ~/ _players.length);
+      }
       roundScores[p.id] = score;
     }
     _completeRound(roundScores);
   }
+
+  /// Penalizarea pe fiecare levată luată, la „Levate" (și inclusă în „Totale").
+  static const int _trickPenalty = -10;
 
   int _cardScoreFor(String category, PlayingCard c) {
     final isPopaRosu = c.suit == Suit.hearts && c.rank == Rank.king;
@@ -354,7 +365,7 @@ class RentEngine extends GameEngine {
       final s = roundScores[p.id] ?? 0;
       _cumulativeScore[p.id] = (_cumulativeScore[p.id] ?? 0) + s;
     }
-    _usedCategories.add(_activeCategory!);
+    _usedByPlayer[_players[_chooserIndex].id]!.add(_activeCategory!);
     _history.add(_RoundResult(
       category: _activeCategory!,
       roundScores: Map.of(roundScores),
@@ -363,7 +374,7 @@ class RentEngine extends GameEngine {
     _activeCategory = null;
     _hands.clear();
 
-    if (_usedCategories.length >= kRentCategories.length) {
+    if (_usedByPlayer.values.every((used) => used.length >= kRentCategories.length)) {
       started = false;
       lastMatchScores = Map.of(_cumulativeScore);
       final maxScore = _cumulativeScore.values.reduce((a, b) => a > b ? a : b);
@@ -402,7 +413,8 @@ class RentEngine extends GameEngine {
       'started': started,
       'winnerId': winnerId,
       'isDraw': isDraw,
-      'usedCategories': _usedCategories.toList(),
+      // Categoriile alese deja de jucătorul care alege acum — doar el alege.
+      'usedCategories': _players.isEmpty ? const <String>[] : _usedByPlayer[_players[_chooserIndex].id]?.toList() ?? const <String>[],
       'choosingCategory': _choosingCategory,
       'chooserId': _players.isEmpty ? null : _players[_chooserIndex].id,
       'activeCategory': _activeCategory,

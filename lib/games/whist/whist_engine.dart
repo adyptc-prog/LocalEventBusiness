@@ -1,5 +1,7 @@
 import 'dart:math';
 
+import 'package:flutter/foundation.dart' show visibleForTesting;
+
 import '../../core/game_engine.dart';
 import '../../models/card.dart';
 import '../../l10n/tr.dart';
@@ -51,17 +53,18 @@ class _RoundResult {
       };
 }
 
-/// Motorul jocului Whist (tip "Oh Hell") — 3-6 jucători, 15 runde (mâna
-/// crește de la 1 la 8 cărți, apoi scade înapoi la 1). Pachetul e redus per
-/// masă: se scot rangurile cele mai mici până rămân exact `jucători × 8`
-/// cărți, ca la runda de vârf (8/jucător) să se împartă tot pachetul, fără
-/// rest. La fiecare rundă: se amestecă din nou, se dă mâna, iar cartea de
-/// deasupra restului (talonul) arată atuul — la runda de vârf nu mai rămâne
-/// nimic de întors, deci acea rundă se joacă fără atu. Fiecare jucător
-/// licitează câte levate crede că ia (ultimul, dealerul, nu poate licita un
-/// număr care ar face suma exact egală cu mâna — "screw the dealer"), apoi
-/// se joacă levatele (obligatoriu culoarea cerută, dacă o ai). Scor pe
-/// rundă: licitație nimerită exact → +licitația; ratată → -diferența.
+/// Motorul jocului Whist românesc — 3-6 jucători (N). Rundele: N runde cu
+/// câte 1 carte, apoi 2, 3 … 7, N runde cu câte 8 cărți, apoi 7 … 2 și din
+/// nou N runde cu câte 1 carte (3·N + 12 runde în total). Pachetul e redus
+/// per masă: se scot rangurile cele mai mici până rămân exact `N × 8` cărți,
+/// ca la rundele de 8 să se împartă tot pachetul. La fiecare rundă: se
+/// amestecă din nou, se dă mâna, iar cartea de deasupra talonului arată
+/// atuul — la rundele de 8 nu mai rămâne nimic de întors, deci se joacă
+/// fără atu. Fiecare jucător licitează câte levate crede că ia (ultimul,
+/// dealerul, nu poate licita un număr care ar face suma exact egală cu mâna),
+/// apoi se joacă levatele: obligatoriu culoarea cerută dacă o ai, iar dacă
+/// n-o ai și ai atu, obligatoriu atu. Scor pe rundă: licitație nimerită
+/// exact → 5 + licitația; ratată → minus diferența.
 class WhistEngine extends GameEngine {
   static const int minPlayersStatic = 3;
   static const int maxPlayersStatic = 6;
@@ -134,10 +137,7 @@ class WhistEngine extends GameEngine {
     if (_players.length < minPlayers || _players.length > maxPlayers) {
       throw GameError('err.playersRange', {'min': minPlayers, 'max': maxPlayers});
     }
-    _roundSizes = [
-      for (var i = 1; i <= maxHandSize; i++) i,
-      for (var i = maxHandSize - 1; i >= 1; i--) i,
-    ];
+    _roundSizes = roundSizesFor(_players.length);
     _roundIndex = 0;
     _dealerIndex = -1;
     _cumulativeScore
@@ -151,6 +151,27 @@ class WhistEngine extends GameEngine {
     _startRound();
     notifyListeners();
   }
+
+  /// Doar pentru teste: înlocuiește mâinile și cartea de atu ale rundei
+  /// curente.
+  @visibleForTesting
+  void debugSetHands(Map<String, List<PlayingCard>> hands, {PlayingCard? trumpCard}) {
+    hands.forEach((id, cards) => _hands[id] = List.of(cards));
+    _trumpCard = trumpCard;
+  }
+
+  /// Structura rundelor la Whist românesc pentru [players] jucători.
+  static List<int> roundSizesFor(int players) => [
+        for (var i = 0; i < players; i++) 1,
+        for (var i = 2; i < maxHandSize; i++) i,
+        for (var i = 0; i < players; i++) maxHandSize,
+        for (var i = maxHandSize - 1; i >= 2; i--) i,
+        for (var i = 0; i < players; i++) 1,
+      ];
+
+  /// Punctele unei runde: 5 + licitația dacă a nimerit exact, altfel minus
+  /// diferența dintre licitație și levatele luate.
+  static int roundScore(int bid, int taken) => bid == taken ? 5 + bid : -(bid - taken).abs();
 
   void _startRound() {
     final handSize = _roundSizes[_roundIndex];
@@ -241,6 +262,11 @@ class WhistEngine extends GameEngine {
       if (hasLedSuit && card.suit != ledSuit) {
         throw GameError('err.mustFollowSuit');
       }
+      // Fără culoarea cerută, dar cu atu în mână — obligatoriu atu.
+      final trump = _trumpCard?.suit;
+      if (!hasLedSuit && trump != null && card.suit != trump && hand.any((c) => c.suit == trump)) {
+        throw GameError('err.whist.mustTrump');
+      }
     }
 
     hand.remove(card);
@@ -299,7 +325,7 @@ class WhistEngine extends GameEngine {
     for (final p in _players) {
       final bid = bids[p.id] ?? 0;
       final got = taken[p.id] ?? 0;
-      final score = bid == got ? bid : -(bid - got).abs();
+      final score = roundScore(bid, got);
       roundScores[p.id] = score;
       _cumulativeScore[p.id] = (_cumulativeScore[p.id] ?? 0) + score;
     }

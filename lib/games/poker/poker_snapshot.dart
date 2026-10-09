@@ -67,6 +67,10 @@ class PokerSnapshot {
   final int pot;
   final int currentBet;
   final int minRaiseIncrement;
+
+  /// `false` dacă privitorul a pierdut dreptul de a ridica în runda curentă
+  /// (după un all-in incomplet al altcuiva) — poate doar egala sau renunța.
+  final bool raiseAllowed;
   final String? currentPlayerId;
   final String? dealerId;
   final List<PlayingCard> myHoleCards;
@@ -82,6 +86,7 @@ class PokerSnapshot {
     required this.pot,
     required this.currentBet,
     required this.minRaiseIncrement,
+    this.raiseAllowed = true,
     required this.currentPlayerId,
     required this.dealerId,
     required this.myHoleCards,
@@ -117,6 +122,7 @@ class PokerSnapshot {
         pot: json['pot'] as int? ?? 0,
         currentBet: json['currentBet'] as int? ?? 0,
         minRaiseIncrement: json['minRaiseIncrement'] as int? ?? 0,
+        raiseAllowed: json['raiseAllowed'] as bool? ?? true,
         currentPlayerId: json['currentPlayerId'] as String?,
         dealerId: json['dealerId'] as String?,
         myHoleCards: (json['myHoleCards'] as List<dynamic>? ?? const [])

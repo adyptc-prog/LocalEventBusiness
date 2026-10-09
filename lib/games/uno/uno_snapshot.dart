@@ -40,6 +40,8 @@ class UnoSnapshot {
   final String? currentPlayerId;
   final bool hasDrawnThisTurn;
   final LocalizedText? lastEventMessage;
+  final UnoCard? drawnCard;
+  final String? unannouncedLastCardId;
 
   const UnoSnapshot({
     required this.viewerId,
@@ -54,6 +56,8 @@ class UnoSnapshot {
     required this.currentPlayerId,
     required this.hasDrawnThisTurn,
     required this.lastEventMessage,
+    this.drawnCard,
+    this.unannouncedLastCardId,
   });
 
   UnoPlayerSummary get me => players.firstWhere((p) => p.id == viewerId);
@@ -71,6 +75,7 @@ class UnoSnapshot {
   /// de adevăr.
   bool isCardPlayable(UnoCard card) {
     if (!isMyTurn) return false;
+    if (hasDrawnThisTurn && card != drawnCard) return false;
     if (card.type == UnoCardType.wild) return true;
     if (card.type == UnoCardType.wildDrawFour) {
       final hasMatchingColor = myHand.any((c) => !c.isWild && c.color == activeColor);
@@ -103,5 +108,7 @@ class UnoSnapshot {
         currentPlayerId: json['currentPlayerId'] as String?,
         hasDrawnThisTurn: json['hasDrawnThisTurn'] as bool? ?? false,
         lastEventMessage: LocalizedText.fromJson(json['lastEventMessage']),
+        drawnCard: json['drawnCard'] == null ? null : UnoCard.fromJson(json['drawnCard'] as Map<String, dynamic>),
+        unannouncedLastCardId: json['unannouncedLastCardId'] as String?,
       );
 }

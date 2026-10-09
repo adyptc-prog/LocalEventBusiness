@@ -138,4 +138,8 @@ const Map<String, (String, String)> errorStrings = {
     'You joined the room from another connection — this one was closed.'
   ),
   'err.serverStart': ('Serverul nu a putut porni.', 'The server could not start.'),
+  'err.lastCard.nothingToAnnounce': ('Nu ai nimic de anunțat acum.', 'You have nothing to call right now.'),
+  'err.lastCard.nobodyToCatch': ('Nu e nimeni de prins acum.', 'There is nobody to catch right now.'),
+  'err.poker.cannotReraise': ('Nu mai poți ridica în runda asta — poți doar egala sau renunța.', 'You can\'t raise again this round — you can only call or fold.'),
+  'err.whist.mustTrump': ('Nu ai culoarea cerută — trebuie să tai cu atu.', 'You can\'t follow suit — you must play a trump.'),
 };

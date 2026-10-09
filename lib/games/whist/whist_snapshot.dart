@@ -119,14 +119,16 @@ class WhistSnapshot {
   }
 
   /// Oglindă locală a regulii din [WhistEngine._playCard] — trebuie urmată
-  /// culoarea cerută dacă ai o carte din ea, altfel orice carte e validă.
-  /// Apelabilă doar în faza de joc (nu de licitație) — verifică [isBidding]
-  /// înainte, la fel ca ecranul de joc.
+  /// culoarea cerută dacă ai o carte din ea; altfel, dacă ai atu, atu;
+  /// altfel orice carte e validă. Apelabilă doar în faza de joc (nu de
+  /// licitație) — verifică [isBidding] înainte, la fel ca ecranul de joc.
   bool isCardPlayable(PlayingCard card) {
     if (currentTrick.isEmpty) return true; // duci tu — orice carte e validă
     final ledSuit = currentTrick.first.card.suit;
     final hasLedSuit = myHand.any((c) => c.suit == ledSuit);
     if (hasLedSuit) return card.suit == ledSuit;
+    final trump = trumpCard?.suit;
+    if (trump != null && myHand.any((c) => c.suit == trump)) return card.suit == trump;
     return true;
   }
 

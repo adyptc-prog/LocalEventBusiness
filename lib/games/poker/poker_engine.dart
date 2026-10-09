@@ -1,6 +1,8 @@
 import 'dart:async';
 import 'dart:math';
 
+import 'package:flutter/foundation.dart' show visibleForTesting;
+
 import '../../core/game_engine.dart';
 import '../../models/card.dart';
 import 'poker_hand_evaluator.dart';
@@ -82,6 +84,13 @@ class PokerEngine extends GameEngine {
   int _actIndex = 0;
   final Set<String> _stillToAct = {};
 
+  /// Cine a acționat de la ultima ridicare *completă* încoace — și cine a
+  /// pierdut dreptul de a mai ridica în runda asta: un all-in mai mic decât
+  /// o ridicare completă nu redeschide licitarea pentru cei care acționaseră
+  /// deja (ei pot doar egala sau renunța).
+  final Set<String> _actedSinceFullRaise = {};
+  final Set<String> _raiseClosed = {};
+
   List<_ShowdownResult>? _lastShowdown;
 
   /// Pauza dintre mâini (cât se vede rezultatul) — anulată la o pornire
@@ -119,6 +128,11 @@ class PokerEngine extends GameEngine {
     notifyListeners();
   }
 
+  /// Doar pentru teste: fisele cu care pornește fiecare jucător (în loc de
+  /// [startingStack]).
+  @visibleForTesting
+  Map<String, int>? debugStartStacks;
+
   @override
   void startGame() {
     if (started) throw GameError('err.alreadyStarted');
@@ -126,7 +140,7 @@ class PokerEngine extends GameEngine {
       throw GameError('err.playersRange', {'min': minPlayers, 'max': maxPlayers});
     }
     for (final p in _players) {
-      p.chips = startingStack;
+      p.chips = debugStartStacks?[p.id] ?? startingStack;
       p.busted = false;
     }
     _nextHandTimer?.cancel();
@@ -172,8 +186,12 @@ class PokerEngine extends GameEngine {
     final bbId = active.length == 2 ? active[1] : active[2];
     _postBlind(sbId, smallBlind);
     _postBlind(bbId, bigBlind);
-    _currentBet = _playerFor(bbId).betThisRound;
+    // Chiar dacă blindul mare a intrat all-in cu mai puțin, de egalat e
+    // blindul mare întreg (regula standard).
+    _currentBet = bigBlind;
     _minRaiseIncrement = bigBlind;
+    _actedSinceFullRaise.clear();
+    _raiseClosed.clear();
 
     for (final id in active) {
       _playerFor(id).holeCards = [_deck.removeLast(), _deck.removeLast()];
@@ -241,6 +259,7 @@ class PokerEngine extends GameEngine {
 
   void _fold(String playerId) {
     _requireTurn(playerId);
+    _actedSinceFullRaise.add(playerId);
     _playerFor(playerId).folded = true;
     _stillToAct.remove(playerId);
     _afterAction();
@@ -249,9 +268,10 @@ class PokerEngine extends GameEngine {
   void _check(String playerId) {
     _requireTurn(playerId);
     final p = _playerFor(playerId);
-    if (p.betThisRound != _currentBet) {
+    if (p.betThisRound < _currentBet) {
       throw GameError('err.poker.mustCall', {'amount': _currentBet});
     }
+    _actedSinceFullRaise.add(playerId);
     _stillToAct.remove(playerId);
     _afterAction();
   }
@@ -261,6 +281,7 @@ class PokerEngine extends GameEngine {
     final p = _playerFor(playerId);
     final toCall = _currentBet - p.betThisRound;
     if (toCall <= 0) throw GameError('err.poker.nothingToCall');
+    _actedSinceFullRaise.add(playerId);
     final pay = min(toCall, p.chips);
     p.chips -= pay;
     p.betThisRound += pay;
@@ -272,6 +293,7 @@ class PokerEngine extends GameEngine {
 
   void _raise(String playerId, int amount) {
     _requireTurn(playerId);
+    if (_raiseClosed.contains(playerId)) throw GameError('err.poker.cannotReraise');
     final p = _playerFor(playerId);
     if (amount < _currentBet + _minRaiseIncrement) {
       throw GameError('err.poker.minRaise', {'amount': _currentBet + _minRaiseIncrement});
@@ -286,6 +308,10 @@ class PokerEngine extends GameEngine {
     p.betThisRound = amount;
     p.betThisHand += need;
     _currentBet = amount;
+    _raiseClosed.clear();
+    _actedSinceFullRaise
+      ..clear()
+      ..add(playerId);
     _reopenActionExcept(playerId);
     _afterAction();
   }
@@ -293,16 +319,36 @@ class PokerEngine extends GameEngine {
   void _allIn(String playerId) {
     _requireTurn(playerId);
     final p = _playerFor(playerId);
+    final total = p.betThisRound + p.chips;
+    // Un all-in peste pariul curent e o ridicare — interzisă cui a pierdut
+    // dreptul de a mai ridica (după un all-in incomplet al altcuiva).
+    if (total > _currentBet && _raiseClosed.contains(playerId)) {
+      throw GameError('err.poker.cannotReraise');
+    }
     final pay = p.chips;
     p.chips = 0;
     p.betThisRound += pay;
     p.betThisHand += pay;
     p.allIn = true;
     if (p.betThisRound > _currentBet) {
-      _minRaiseIncrement = max(_minRaiseIncrement, p.betThisRound - _currentBet);
+      final raiseBy = p.betThisRound - _currentBet;
+      if (raiseBy >= _minRaiseIncrement) {
+        // Ridicare completă — redeschide licitarea pentru toți.
+        _minRaiseIncrement = raiseBy;
+        _raiseClosed.clear();
+        _actedSinceFullRaise
+          ..clear()
+          ..add(playerId);
+      } else {
+        // Ridicare incompletă: cei care acționaseră deja trebuie doar să
+        // răspundă la diferență (egalează sau renunță), fără să mai ridice.
+        _raiseClosed.addAll(_actedSinceFullRaise);
+        _actedSinceFullRaise.add(playerId);
+      }
       _currentBet = p.betThisRound;
       _reopenActionExcept(playerId);
     } else {
+      _actedSinceFullRaise.add(playerId);
       _stillToAct.remove(playerId);
     }
     _afterAction();
@@ -374,6 +420,8 @@ class PokerEngine extends GameEngine {
     _dealNextStreetCards();
     _currentBet = 0;
     _minRaiseIncrement = bigBlind;
+    _actedSinceFullRaise.clear();
+    _raiseClosed.clear();
 
     final nonFolded = _actingOrder.where((id) => !_playerFor(id).folded).toList();
     final canAct = nonFolded.where((id) => !_playerFor(id).allIn).toList();
@@ -510,6 +558,7 @@ class PokerEngine extends GameEngine {
       'pot': _actingOrder.fold<int>(0, (sum, id) => sum + _playerFor(id).betThisHand),
       'currentBet': _currentBet,
       'minRaiseIncrement': _minRaiseIncrement,
+      'raiseAllowed': !_raiseClosed.contains(viewerId),
       'currentPlayerId': currentPlayerId,
       'dealerId': dealerId,
       'myHoleCards': _players.any((p) => p.id == viewerId)

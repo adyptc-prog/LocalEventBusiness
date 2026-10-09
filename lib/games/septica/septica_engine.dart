@@ -1,5 +1,7 @@
 import 'dart:math';
 
+import 'package:flutter/foundation.dart' show visibleForTesting;
+
 import '../../core/game_engine.dart';
 import '../../models/card.dart';
 import '../../l10n/tr.dart';
@@ -143,6 +145,16 @@ class SepticaEngine extends GameEngine {
     notifyListeners();
   }
 
+  /// Doar pentru teste: înlocuiește mâinile, pachetul și conducătorul după
+  /// [startGame], ca o situație de joc să poată fi reprodusă exact.
+  @visibleForTesting
+  void debugDeal({required Map<String, List<PlayingCard>> hands, List<PlayingCard> drawPile = const [], required String leaderId}) {
+    hands.forEach((id, cards) => _hands[id] = List.of(cards));
+    _drawPile = List.of(drawPile);
+    _leaderId = leaderId;
+    _table.clear();
+  }
+
   List<String> _seatOrderFrom(String startId) {
     final n = _players.length;
     final startIdx = _players.indexWhere((p) => p.id == startId);
@@ -224,10 +236,13 @@ class SepticaEngine extends GameEngine {
       _lastPlayedCard = card;
       _lastPlayQualified = true;
       _awaitingLeaderDecision = false;
+      // Ultima tăietură ia masa: tăind din nou, conducătorul redevine cel
+      // care ia cărțile, dacă nimeni nu-l mai taie în turul următor.
+      _challengerId = null;
       _circuitQueue = _buildCircuitQueue();
       if (_circuitQueue.isEmpty) {
-        // Nimeni nu mai poate răspunde — provocatorul curent rămâne câștigător.
-        _resolveCapture(_challengerId!);
+        // Nimeni nu mai poate răspunde — conducătorul, ultimul care a tăiat, ia tot.
+        _resolveCapture(_leaderId);
       }
       notifyListeners();
       return;

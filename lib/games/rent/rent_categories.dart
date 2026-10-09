@@ -6,6 +6,7 @@ const List<String> kRentCategories = [
   'popa_rosu',
   'dame',
   'romburi',
+  'levate',
   'totale',
   'imperiale',
   'rent',
