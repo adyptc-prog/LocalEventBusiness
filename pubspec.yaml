@@ -58,6 +58,8 @@ dependencies:
   path_provider: ^2.1.5
   # Generare de coduri QR local, fără nicio cerere de rețea
   qr_flutter: ^4.1.0
+  # PDF-ul de tipărit cu codurile QR ale meselor (câte 6 cartonașe pe pagina A4)
+  pdf: ^3.12.0
   # SHA-256 pentru id-ul public al jucătorului, derivat din id-ul secret de profil
   crypto: ^3.0.6
 
@@ -114,6 +116,26 @@ flutter:
 
   # For details regarding adding assets from package dependencies, see
   # https://flutter.dev/to/asset-from-package
+
+  # Fonturile incluse în aplicație — clientul web servit de pe telefonul-
+  # server nu are acces garantat la internet, deci nu le poate descărca de
+  # pe Google Fonts (altfel textul și simbolurile cărților ar lipsi).
+  # Roboto: Apache 2.0; Noto Sans Symbols 2 (♠ ♥ ♦ ♣): SIL OFL 1.1.
+  fonts:
+    - family: Roboto
+      fonts:
+        - asset: assets/fonts/Roboto-Regular.ttf
+        - asset: assets/fonts/Roboto-Italic.ttf
+          style: italic
+        - asset: assets/fonts/Roboto-Medium.ttf
+          weight: 500
+        - asset: assets/fonts/Roboto-Bold.ttf
+          weight: 700
+        - asset: assets/fonts/Roboto-Black.ttf
+          weight: 900
+    - family: NotoSansSymbols2
+      fonts:
+        - asset: assets/fonts/NotoSansSymbols2-Regular.ttf
 
   # To add custom fonts to your application, add a fonts section here,
   # in this "flutter" section. Each entry in this list should have a

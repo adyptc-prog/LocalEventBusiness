@@ -3,6 +3,7 @@ import 'dart:convert';
 
 import 'package:flutter_foreground_task/flutter_foreground_task.dart';
 
+import '../core/bill_request.dart';
 import '../core/blocked_users_store.dart';
 import '../core/event_config_store.dart';
 import '../core/menu_item.dart';
@@ -31,6 +32,22 @@ import 'participant_info.dart';
 /// comandă serverul, nu doar îi ascultă starea.
 class EventServerRunner {
   static const _serviceId = 4503;
+
+  // Ultima stare primită de la server — un ecran deschis după ce serverul
+  // a trimis-o (ex: „Comenzi la bar" deschis după ce au venit comenzi) o
+  // afișează imediat, fără să aștepte următoarea schimbare.
+  static List<LobbyRoom> _lastRooms = const [];
+  static List<ParticipantInfo> _lastParticipants = const [];
+  static List<ModerationLogEntry> _lastModerationLog = const [];
+  static List<Order> _lastOrders = const [];
+  static List<BillRequest> _lastBills = const [];
+  static List<BillRequest> get lastBills => _lastBills;
+  static final _billsController = StreamController<List<BillRequest>>.broadcast();
+  static Stream<List<BillRequest>> get billsUpdates => _billsController.stream;
+  static List<LobbyRoom> get lastRooms => _lastRooms;
+  static List<ParticipantInfo> get lastParticipants => _lastParticipants;
+  static List<ModerationLogEntry> get lastModerationLog => _lastModerationLog;
+  static List<Order> get lastOrders => _lastOrders;
 
   static final _roomsController = StreamController<List<LobbyRoom>>.broadcast();
   static Stream<List<LobbyRoom>> get roomsUpdates => _roomsController.stream;
@@ -71,25 +88,36 @@ class EventServerRunner {
           final rooms = (decoded['rooms'] as List)
               .map((r) => LobbyRoom.fromJson(Map<String, dynamic>.from(r as Map)))
               .toList();
+          _lastRooms = rooms;
           _roomsController.add(rooms);
           break;
         case 'participants':
           final participants = (decoded['participants'] as List)
               .map((p) => ParticipantInfo.fromJson(Map<String, dynamic>.from(p as Map)))
               .toList();
+          _lastParticipants = participants;
           _participantsController.add(participants);
           break;
         case 'moderation_log':
           final log = (decoded['log'] as List)
               .map((e) => ModerationLogEntry.fromJson(Map<String, dynamic>.from(e as Map)))
               .toList();
+          _lastModerationLog = log;
           _moderationLogController.add(log);
           break;
         case 'orders':
           final orders = (decoded['orders'] as List)
               .map((o) => Order.fromJson(Map<String, dynamic>.from(o as Map)))
               .toList();
+          _lastOrders = orders;
           _ordersController.add(orders);
+          break;
+        case 'bills':
+          final bills = (decoded['bills'] as List)
+              .map((b) => BillRequest.fromJson(Map<String, dynamic>.from(b as Map)))
+              .toList();
+          _lastBills = bills;
+          _billsController.add(bills);
           break;
         case 'start_error':
           _startErrorController.add(decoded['message'] as String? ?? tr('err.serverStart'));
@@ -135,6 +163,24 @@ class EventServerRunner {
 
   static Future<void> stop() async {
     await FlutterForegroundTask.stopService();
+    _lastRooms = const [];
+    _lastParticipants = const [];
+    _lastModerationLog = const [];
+    _lastOrders = const [];
+    _lastBills = const [];
+  }
+
+  /// Barul a dus nota la masă.
+  static void handleBill(String billId) {
+    FlutterForegroundTask.sendDataToTask(jsonEncode({'type': 'handle_bill', 'billId': billId}));
+  }
+
+  /// Cere serverului să retrimită toată starea curentă (camere, participanți,
+  /// istoric de moderare, comenzi) — apelat de ecranele organizatorului la
+  /// deschidere, inclusiv după ce aplicația a fost redeschisă cu serverul
+  /// încă pornit în fundal.
+  static void requestState() {
+    FlutterForegroundTask.sendDataToTask(jsonEncode({'type': 'request_state'}));
   }
 
   static void kick(String profileId) {
@@ -179,11 +225,12 @@ class EventServerRunner {
 
   /// La fel ca [syncActivities], dar pentru banca de produse de meniu —
   /// aceeași problemă de izolate separate, aceeași soluție.
-  static void syncMenu(List<MenuCategory> categories, List<MenuItem> items) {
+  static void syncMenu(List<MenuCategory> categories, List<MenuItem> items, {required String currency}) {
     FlutterForegroundTask.sendDataToTask(jsonEncode({
       'type': 'sync_menu',
       'categories': categories.map((c) => c.toJson()).toList(),
       'items': items.map((i) => i.toJson()).toList(),
+      'currency': currency,
     }));
   }
 }
@@ -201,6 +248,7 @@ class _EventServerTaskHandler extends TaskHandler {
   StreamSubscription? _participantsSub;
   StreamSubscription? _moderationLogSub;
   StreamSubscription? _ordersSub;
+  StreamSubscription? _billsSub;
 
   @override
   Future<void> onStart(DateTime timestamp, TaskStarter starter) async {
@@ -244,12 +292,39 @@ class _EventServerTaskHandler extends TaskHandler {
         'log': log.map((e) => e.toJson()).toList(),
       }));
     });
-    _ordersSub = server.ordersUpdates.listen((orders) {
-      FlutterForegroundTask.sendDataToMain(jsonEncode({
-        'type': 'orders',
-        'orders': orders.map((o) => o.toJson()).toList(),
-      }));
-    });
+    _ordersSub = server.ordersUpdates.listen(_sendOrders);
+    _billsSub = server.billsUpdates.listen(_sendBills);
+  }
+
+  void _sendBills(List<BillRequest> bills) {
+    FlutterForegroundTask.sendDataToMain(jsonEncode({
+      'type': 'bills',
+      'bills': bills.map((b) => b.toJson()).toList(),
+    }));
+  }
+
+  void _sendOrders(List<Order> orders) {
+    FlutterForegroundTask.sendDataToMain(jsonEncode({
+      'type': 'orders',
+      'orders': orders.map((o) => o.toJson()).toList(),
+    }));
+  }
+
+  void _sendFullState(EventServerService server) {
+    FlutterForegroundTask.sendDataToMain(jsonEncode({
+      'type': 'rooms',
+      'rooms': server.rooms.map((r) => r.toJson()).toList(),
+    }));
+    FlutterForegroundTask.sendDataToMain(jsonEncode({
+      'type': 'participants',
+      'participants': server.participants.map((p) => p.toJson()).toList(),
+    }));
+    FlutterForegroundTask.sendDataToMain(jsonEncode({
+      'type': 'moderation_log',
+      'log': ModerationLogStore.instance.entries.map((e) => e.toJson()).toList(),
+    }));
+    _sendOrders(server.orders);
+    _sendBills(server.bills);
   }
 
   @override
@@ -266,6 +341,9 @@ class _EventServerTaskHandler extends TaskHandler {
     try {
       final decoded = jsonDecode(data) as Map<String, dynamic>;
       switch (decoded['type']) {
+        case 'request_state':
+          _sendFullState(server);
+          break;
         case 'kick':
           server.kickParticipant(decoded['profileId'] as String);
           break;
@@ -290,6 +368,9 @@ class _EventServerTaskHandler extends TaskHandler {
         case 'cancel_order':
           server.cancelOrder(decoded['orderId'] as String);
           break;
+        case 'handle_bill':
+          server.handleBill(decoded['billId'] as String);
+          break;
         case 'sync_activities':
           EventConfigStore.instance.applyRemote((decoded['activities'] as List).cast<String>());
           break;
@@ -297,6 +378,7 @@ class _EventServerTaskHandler extends TaskHandler {
           MenuStore.instance.applyRemote(
             (decoded['categories'] as List).map((c) => MenuCategory.fromJson(Map<String, dynamic>.from(c as Map))).toList(),
             (decoded['items'] as List).map((i) => MenuItem.fromJson(Map<String, dynamic>.from(i as Map))).toList(),
+            currency: decoded['currency'] as String?,
           );
           server.menuChanged();
           break;
@@ -310,6 +392,7 @@ class _EventServerTaskHandler extends TaskHandler {
     await _participantsSub?.cancel();
     await _moderationLogSub?.cancel();
     await _ordersSub?.cancel();
+    await _billsSub?.cancel();
     await _server?.stop();
   }
 }

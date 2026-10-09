@@ -1,11 +1,11 @@
 import 'dart:async';
 
 import 'package:flutter/material.dart';
-import 'package:network_info_plus/network_info_plus.dart';
 
 import '../network/event_server_runner.dart';
 import '../network/event_server_service.dart' show EventServerService;
 import '../core/activity_catalog.dart';
+import '../core/network_address.dart';
 import '../network/lobby_room.dart';
 import '../widgets/language_button.dart';
 import '../l10n/tr.dart';
@@ -42,7 +42,7 @@ class _EventServerScreenState extends State<EventServerScreen> {
   Future<void> _checkAlreadyRunning() async {
     final running = await EventServerRunner.isRunning;
     if (!mounted || !running) return;
-    final ip = await NetworkInfo().getWifiIP();
+    final ip = await localNetworkIp();
     if (!mounted) return;
     _listenRooms();
     setState(() {
@@ -52,10 +52,12 @@ class _EventServerScreenState extends State<EventServerScreen> {
   }
 
   void _listenRooms() {
+    _rooms = EventServerRunner.lastRooms;
     _roomsSub ??= EventServerRunner.roomsUpdates.listen((rooms) {
       if (!mounted) return;
       setState(() => _rooms = rooms);
     });
+    EventServerRunner.requestState();
   }
 
   @override
@@ -84,7 +86,7 @@ class _EventServerScreenState extends State<EventServerScreen> {
         onTimeout: () => '',
       );
       if (startError.isNotEmpty) throw Exception(startError);
-      final ip = await NetworkInfo().getWifiIP();
+      final ip = await localNetworkIp();
       if (!mounted) return;
       _listenRooms();
       setState(() {

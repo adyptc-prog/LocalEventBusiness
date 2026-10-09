@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/material.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
 
@@ -10,6 +11,7 @@ import 'core/table_config_store.dart';
 import 'l10n/tr.dart';
 import 'network/event_server_runner.dart';
 import 'screens/main_menu_screen.dart';
+import 'screens/menu_connect_screen.dart';
 import 'widgets/language_button.dart';
 
 Future<void> main() async {
@@ -28,6 +30,9 @@ Future<void> main() async {
   runApp(const MacaoApp());
 }
 
+/// `true` când clientul web a fost deschis prin codul QR al unei mese.
+bool get openedFromTableQr => kIsWeb && Uri.base.queryParameters.containsKey('table');
+
 class MacaoApp extends StatelessWidget {
   const MacaoApp({super.key});
 
@@ -43,10 +48,14 @@ class MacaoApp extends StatelessWidget {
         builder: (context, child) => LanguageRebuilder(child: child ?? const SizedBox.shrink()),
         debugShowCheckedModeBanner: false,
         theme: ThemeData(
+          fontFamily: 'Roboto',
+          fontFamilyFallback: const ['NotoSansSymbols2'],
           colorScheme: ColorScheme.fromSeed(seedColor: const Color(0xFF0B5E3B), brightness: Brightness.dark),
           useMaterial3: true,
         ),
-        home: const MainMenuScreen(),
+        // Un QR de masă (`/?table=N`) duce direct la meniu — invitatul care l-a
+        // scanat vrea să comande, nu să aleagă din meniul principal.
+        home: openedFromTableQr ? const MenuConnectScreen() : const MainMenuScreen(),
       ),
     );
   }

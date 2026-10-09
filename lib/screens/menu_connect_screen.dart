@@ -10,6 +10,7 @@ import '../network/event_server_runner.dart';
 import '../network/event_server_service.dart';
 import '../widgets/language_button.dart';
 import 'lobby_screen.dart';
+import 'main_menu_screen.dart';
 import '../l10n/tr.dart';
 
 /// Punctul de intrare al clientului în activitatea „Meniu" — spre deosebire
@@ -135,7 +136,22 @@ class _MenuConnectScreenState extends State<MenuConnectScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: const Color(0xFF6B3F1D),
-      appBar: AppBar(backgroundColor: Colors.black26, title: Text(tr('game.menu.title')), actions: const [LanguageButton()]),
+      appBar: AppBar(
+        backgroundColor: Colors.black26,
+        // Deschis direct din QR-ul mesei nu există ecran anterior — oferim
+        // drumul spre meniul principal al aplicației.
+        leading: Navigator.of(context).canPop()
+            ? null
+            : IconButton(
+                icon: const Icon(Icons.home),
+                tooltip: tr('menuOrder.leave'),
+                onPressed: () => Navigator.of(context).pushReplacement(
+                  MaterialPageRoute(builder: (context) => const MainMenuScreen()),
+                ),
+              ),
+        title: Text(tr('game.menu.title')),
+        actions: const [LanguageButton()],
+      ),
       body: SafeArea(
         child: Padding(
           padding: const EdgeInsets.all(16),

@@ -1,5 +1,6 @@
 import '../core/menu_item.dart';
 import '../core/moderation_log_store.dart';
+import '../core/bill_request.dart';
 import '../core/order.dart';
 import 'lobby_room.dart';
 import 'participant_info.dart';
@@ -16,6 +17,16 @@ class EventServerRunner {
   static Stream<List<ModerationLogEntry>> get moderationLogUpdates => const Stream.empty();
   static Stream<List<Order>> get ordersUpdates => const Stream.empty();
   static Stream<String> get startErrorEvents => const Stream.empty();
+
+  static List<LobbyRoom> get lastRooms => const [];
+  static List<ParticipantInfo> get lastParticipants => const [];
+  static List<ModerationLogEntry> get lastModerationLog => const [];
+  static List<Order> get lastOrders => const [];
+  static List<BillRequest> get lastBills => const [];
+  static Stream<List<BillRequest>> get billsUpdates => const Stream.empty();
+  static void handleBill(String billId) {}
+
+  static void requestState() {}
 
   static Future<bool> get isRunning async => false;
 
@@ -41,5 +52,5 @@ class EventServerRunner {
 
   static void syncActivities(Set<String> enabledIds) {}
 
-  static void syncMenu(List<MenuCategory> categories, List<MenuItem> items) {}
+  static void syncMenu(List<MenuCategory> categories, List<MenuItem> items, {required String currency}) {}
 }

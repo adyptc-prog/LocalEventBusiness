@@ -30,7 +30,10 @@ Compress-Archive -Path (Join-Path $placeholderDir "*") -DestinationPath $zipPath
 Remove-Item $placeholderDir -Recurse -Force
 
 Write-Host "1/3 - compilez clientul web (flutter build web)..." -ForegroundColor Cyan
-Invoke-Flutter build web --release
+# --no-web-resources-cdn: CanvasKit se incarca din build\web\canvaskit,
+# servit de telefonul-server -- invitatii pe hotspot fara internet nu pot
+# ajunge la CDN-ul Google, iar pagina ar ramane alba.
+Invoke-Flutter build web --release --no-web-resources-cdn
 if ($LASTEXITCODE -ne 0) { throw "flutter build web a esuat" }
 
 Write-Host "2/3 - arhivez build\web in assets\web_client.zip..." -ForegroundColor Cyan

@@ -24,6 +24,10 @@ class MenuItem {
   final String? photoFile;
   final bool available;
 
+  /// Prețul în bani (1 leu = 100 de bani) — `null` doar pentru produse
+  /// create înainte să existe prețuri.
+  final int? priceCents;
+
   const MenuItem({
     required this.id,
     required this.categoryId,
@@ -31,6 +35,7 @@ class MenuItem {
     this.description,
     this.photoFile,
     this.available = true,
+    this.priceCents,
   });
 
   MenuItem copyWith({
@@ -39,6 +44,7 @@ class MenuItem {
     Object? description = _unset,
     Object? photoFile = _unset,
     bool? available,
+    Object? priceCents = _unset,
   }) =>
       MenuItem(
         id: id,
@@ -47,6 +53,7 @@ class MenuItem {
         description: description == _unset ? this.description : description as String?,
         photoFile: photoFile == _unset ? this.photoFile : photoFile as String?,
         available: available ?? this.available,
+        priceCents: priceCents == _unset ? this.priceCents : priceCents as int?,
       );
 
   Map<String, dynamic> toJson() => {
@@ -56,6 +63,7 @@ class MenuItem {
         'description': description,
         'photoFile': photoFile,
         'available': available,
+        if (priceCents != null) 'priceCents': priceCents,
       };
 
   factory MenuItem.fromJson(Map<String, dynamic> json) => MenuItem(
@@ -65,6 +73,7 @@ class MenuItem {
         description: json['description'] as String?,
         photoFile: json['photoFile'] as String?,
         available: json['available'] as bool? ?? true,
+        priceCents: json['priceCents'] as int?,
       );
 }
 

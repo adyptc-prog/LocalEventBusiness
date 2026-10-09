@@ -9,6 +9,7 @@ import 'package:web_socket_channel/io.dart';
 import 'package:web_socket_channel/web_socket_channel.dart';
 
 import '../core/activity_catalog.dart';
+import '../core/bill_request.dart';
 import '../core/blocked_users_store.dart';
 import '../core/chat_message.dart';
 import '../core/event_config_store.dart';
@@ -74,6 +75,7 @@ class EventServerService {
   final _participantsController = StreamController<List<ParticipantInfo>>.broadcast();
   final _moderationLogController = StreamController<List<ModerationLogEntry>>.broadcast();
   final _ordersController = StreamController<List<Order>>.broadcast();
+  final _billsController = StreamController<List<BillRequest>>.broadcast();
 
   /// Vezi `RoomSession.autoActAfter`/`autoActTick` — configurabile doar ca
   /// testele să nu aștepte zeci de secunde.
@@ -194,6 +196,13 @@ class EventServerService {
 
   Stream<List<Order>> get ordersUpdates => _ordersController.stream;
 
+  /// Cererile de notă — pentru ecranul barului (`OrdersDashboardScreen`).
+  Stream<List<BillRequest>> get billsUpdates => _billsController.stream;
+  List<BillRequest> get bills => _menuEngine.allBills;
+
+  /// Barul a dus nota la masă.
+  void handleBill(String billId) => _menuEngine.markBillHandled(billId);
+
   /// Avansează statusul unei comenzi (nouă → în pregătire → gata) — apelată
   /// direct de `OrdersDashboardScreen` prin canalul de comenzi, niciodată de
   /// un client obișnuit prin WebSocket (vezi `MenuEngine`). Nu retrimite
@@ -203,6 +212,9 @@ class EventServerService {
   void advanceOrder(String orderId) => _menuEngine.advanceStatus(orderId);
 
   void cancelOrder(String orderId) => _menuEngine.cancelOrder(orderId);
+
+  /// Toate comenzile curente, cele mai noi primele.
+  List<Order> get orders => _menuEngine.allOrders;
 
   /// Apelat după ce organizatorul a sincronizat meniul editat — clienții
   /// deja conectați la Meniu primesc imediat produsele noi.
@@ -238,9 +250,11 @@ class EventServerService {
     _rooms[menuRoomCode] = room;
     final engine = room.engine as MenuEngine;
     engine.restoreOrders(OrdersStore.instance.loaded);
+    engine.restoreBills(OrdersStore.instance.loadedBills);
     engine.addListener(() {
       _ordersController.add(engine.allOrders);
-      OrdersStore.instance.save(engine.allOrders);
+      _billsController.add(engine.allBills);
+      OrdersStore.instance.save(engine.allOrders, engine.allBills);
     });
   }
 
@@ -323,6 +337,9 @@ class EventServerService {
       return;
     }
     request.response.headers.contentType = ContentType.parse(WebAssetBundle.contentTypeFor(path));
+    // Fără cache: după o actualizare a aplicației, browserele invitaților
+    // trebuie să ia imediat noul client web, nu o versiune veche păstrată.
+    request.response.headers.set(HttpHeaders.cacheControlHeader, 'no-cache');
     request.response.add(bytes);
     request.response.close();
   }
@@ -693,6 +710,7 @@ class EventServerService {
     await _participantsController.close();
     await _moderationLogController.close();
     await _ordersController.close();
+    await _billsController.close();
   }
 }
 

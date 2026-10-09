@@ -1,3 +1,4 @@
+import '../../core/bill_request.dart';
 import '../../core/game_engine.dart';
 import '../../core/menu_store.dart';
 import '../../core/order.dart';
@@ -51,7 +52,11 @@ class MenuEngine extends GameEngine {
 
   final List<_MenuPlayerInfo> _players = [];
   final List<Order> _orders = [];
+  final List<BillRequest> _bills = [];
   Set<String>? _affected;
+
+  /// Câte cereri de notă rezolvate păstrăm în memorie.
+  static const int maxHandledBillsKept = 200;
 
   /// Repune comenzile salvate (vezi `OrdersStore`) după o repornire a
   /// serverului — apelat o singură dată, înainte de orice client.
@@ -60,6 +65,16 @@ class MenuEngine extends GameEngine {
       ..clear()
       ..addAll(orders);
   }
+
+  /// La fel ca [restoreOrders], pentru cererile de notă.
+  void restoreBills(List<BillRequest> bills) {
+    _bills
+      ..clear()
+      ..addAll(bills);
+  }
+
+  /// Toate cererile de notă, cele mai noi primele.
+  List<BillRequest> get allBills => List.unmodifiable(_bills);
 
   /// Meniul s-a schimbat (organizatorul a editat produsele) — toți clienții
   /// conectați trebuie să primească noul meniu.
@@ -119,12 +134,14 @@ class MenuEngine extends GameEngine {
     final type = action['type'];
     if (type == 'submit_order') {
       _submitOrder(playerId, action);
+    } else if (type == 'request_bill') {
+      _requestBill(playerId, action);
     } else {
       throw GameError('err.unknownAction');
     }
   }
 
-  void _submitOrder(String playerId, Map<String, dynamic> action) {
+  static String _readTableLabel(Map<String, dynamic> action) {
     final rawLabel = action['tableLabel'];
     final tableLabel = (rawLabel is String ? rawLabel : '').trim();
     if (tableLabel.isEmpty) {
@@ -133,6 +150,57 @@ class MenuEngine extends GameEngine {
     if (tableLabel.length > maxTableLabelLength) {
       throw GameError('err.menu.tableTooLong');
     }
+    return tableLabel;
+  }
+
+  /// Comenzile clientului care încă n-au intrat pe nicio notă (și nu sunt
+  /// anulate) — ce mai are de plătit.
+  List<Order> _unbilledOrdersOf(String customerId) {
+    final billed = {
+      for (final b in _bills)
+        if (b.customerId == customerId) ...b.orderIds,
+    };
+    return _orders
+        .where((o) => o.customerId == customerId && o.status != OrderStatus.cancelled && !billed.contains(o.id))
+        .toList();
+  }
+
+  /// Cererea invitatului să i se aducă nota — una deschisă odată; totalul
+  /// cuprinde comenzile lui încă nefacturate (poate fi și 0, dacă a comandat
+  /// direct la ospătar).
+  void _requestBill(String playerId, Map<String, dynamic> action) {
+    final tableLabel = _readTableLabel(action);
+    if (_bills.any((b) => b.customerId == playerId && !b.handled)) {
+      throw GameError('err.menu.billAlreadyRequested');
+    }
+    final orders = _unbilledOrdersOf(playerId);
+    _bills.insert(
+      0,
+      BillRequest(
+        id: 'bill-${DateTime.now().microsecondsSinceEpoch}',
+        customerId: playerId,
+        tableLabel: tableLabel,
+        totalCents: orders.fold(0, (sum, o) => sum + o.totalCents),
+        orderIds: [for (final o in orders) o.id],
+        createdAt: DateTime.now(),
+      ),
+    );
+    var handled = 0;
+    _bills.removeWhere((b) => b.handled && ++handled > maxHandledBillsKept);
+    _notifyOnly(playerId);
+  }
+
+  /// Barul a dus nota la masă — apelat prin canalul de comenzi
+  /// (`EventServerService.handleBill`), niciodată de un client.
+  void markBillHandled(String billId) {
+    final index = _bills.indexWhere((b) => b.id == billId);
+    if (index == -1 || _bills[index].handled) return;
+    _bills[index] = _bills[index].markHandled();
+    _notifyOnly(_bills[index].customerId);
+  }
+
+  void _submitOrder(String playerId, Map<String, dynamic> action) {
+    final tableLabel = _readTableLabel(action);
     final openOrders = _orders.where((o) =>
         o.customerId == playerId && (o.status == OrderStatus.placed || o.status == OrderStatus.preparing));
     if (openOrders.length >= maxOpenOrdersPerCustomer) {
@@ -155,7 +223,7 @@ class MenuEngine extends GameEngine {
       }
       if (!availableIds.contains(menuItemId)) continue;
       final item = MenuStore.instance.items.firstWhere((i) => i.id == menuItemId);
-      lines.add(OrderLine(menuItemId: item.id, name: item.name, quantity: quantity));
+      lines.add(OrderLine(menuItemId: item.id, name: item.name, quantity: quantity, unitPriceCents: item.priceCents));
     }
     if (lines.isEmpty) {
       throw GameError('err.menu.empty');
@@ -229,8 +297,12 @@ class MenuEngine extends GameEngine {
       'menu': {
         'categories': MenuStore.instance.categories.map((c) => c.toJson()).toList(),
         'items': MenuStore.instance.items.map((i) => i.toJson()).toList(),
+        'currency': MenuStore.instance.currency,
       },
       'myOrders': _orders.where((o) => o.customerId == viewerId).map((o) => o.toJson()).toList(),
+      // Cât ar fi pe nota cerută acum, și ultima cerere de notă a clientului.
+      'billableTotalCents': _unbilledOrdersOf(viewerId).fold<int>(0, (sum, o) => sum + o.totalCents),
+      'myBill': _bills.where((b) => b.customerId == viewerId).firstOrNull?.toJson(),
     };
   }
 }

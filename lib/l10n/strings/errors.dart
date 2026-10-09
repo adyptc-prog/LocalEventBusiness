@@ -142,4 +142,5 @@ const Map<String, (String, String)> errorStrings = {
   'err.lastCard.nobodyToCatch': ('Nu e nimeni de prins acum.', 'There is nobody to catch right now.'),
   'err.poker.cannotReraise': ('Nu mai poți ridica în runda asta — poți doar egala sau renunța.', 'You can\'t raise again this round — you can only call or fold.'),
   'err.whist.mustTrump': ('Nu ai culoarea cerută — trebuie să tai cu atu.', 'You can\'t follow suit — you must play a trump.'),
+  'err.menu.billAlreadyRequested': ('Ai cerut deja nota — ospătarul vine la masă.', 'You already asked for the bill — the waiter is coming.'),
 };

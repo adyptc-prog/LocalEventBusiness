@@ -6,27 +6,38 @@ enum OrderStatus { placed, preparing, ready, cancelled }
 OrderStatus orderStatusFromJson(String value) =>
     OrderStatus.values.firstWhere((s) => s.name == value, orElse: () => OrderStatus.placed);
 
-/// O linie din comandă — [name] e o copie a numelui produsului la momentul
-/// comenzii, ca o comandă veche să rămână lizibilă chiar dacă organizatorul
-/// redenumește sau șterge produsul din meniu ulterior.
+/// O linie din comandă — [name] și [unitPriceCents] sunt copii ale numelui
+/// și prețului produsului la momentul comenzii, ca o comandă veche să rămână
+/// corectă chiar dacă organizatorul schimbă sau șterge produsul ulterior.
 class OrderLine {
   final String menuItemId;
   final String name;
   final int quantity;
 
-  const OrderLine({required this.menuItemId, required this.name, required this.quantity});
+  /// Prețul unitar în bani; `null` pentru produse fără preț setat.
+  final int? unitPriceCents;
 
-  Map<String, dynamic> toJson() => {'menuItemId': menuItemId, 'name': name, 'quantity': quantity};
+  const OrderLine({required this.menuItemId, required this.name, required this.quantity, this.unitPriceCents});
+
+  int get lineTotalCents => (unitPriceCents ?? 0) * quantity;
+
+  Map<String, dynamic> toJson() => {
+        'menuItemId': menuItemId,
+        'name': name,
+        'quantity': quantity,
+        if (unitPriceCents != null) 'unitPriceCents': unitPriceCents,
+      };
 
   factory OrderLine.fromJson(Map<String, dynamic> json) => OrderLine(
         menuItemId: json['menuItemId'] as String,
         name: json['name'] as String,
         quantity: json['quantity'] as int,
+        unitPriceCents: json['unitPriceCents'] as int?,
       );
 }
 
-/// O comandă trimisă la bar. Fără preț/total — e o notificare către bar, nu
-/// o casă de marcat; plata rămâne cash, discutată direct la masă.
+/// O comandă trimisă la bar, cu prețurile din momentul comenzii — barul vede
+/// totalul de încasat, plata se face la masă.
 class Order {
   final String id;
   final String customerId;
@@ -45,6 +56,9 @@ class Order {
     required this.status,
     required this.createdAt,
   });
+
+  /// Totalul comenzii, în bani.
+  int get totalCents => lines.fold(0, (sum, l) => sum + l.lineTotalCents);
 
   Order copyWith({OrderStatus? status}) => Order(
         id: id,

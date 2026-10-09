@@ -1,6 +1,7 @@
 import 'dart:async';
 
 import '../core/moderation_log_store.dart';
+import '../core/bill_request.dart';
 import '../core/order.dart';
 import 'lobby_room.dart';
 import 'participant_info.dart';
@@ -42,6 +43,10 @@ class EventServerService {
 
   void cancelOrder(String orderId) {}
   void menuChanged() {}
+  List<Order> get orders => const [];
+  Stream<List<BillRequest>> get billsUpdates => const Stream.empty();
+  List<BillRequest> get bills => const [];
+  void handleBill(String billId) {}
 
   Future<void> broadcastAnnouncement(String text) async {}
 

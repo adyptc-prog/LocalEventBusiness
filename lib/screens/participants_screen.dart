@@ -26,12 +26,13 @@ class _ParticipantsScreenState extends State<ParticipantsScreen> {
   final _announcementController = TextEditingController();
   StreamSubscription? _participantsSub;
   StreamSubscription? _logSub;
-  List<ParticipantInfo> _participants = [];
-  List<ModerationLogEntry> _log = [];
+  List<ParticipantInfo> _participants = EventServerRunner.lastParticipants;
+  List<ModerationLogEntry> _log = EventServerRunner.lastModerationLog;
 
   @override
   void initState() {
     super.initState();
+    EventServerRunner.requestState();
     _participantsSub = EventServerRunner.participantsUpdates.listen((participants) {
       if (!mounted) return;
       setState(() => _participants = participants);

@@ -3,6 +3,8 @@ import 'dart:async';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 
+import '../../l10n/money.dart';
+import '../../screens/main_menu_screen.dart';
 import '../../widgets/language_button.dart';
 
 import '../../core/game_definition.dart';
@@ -67,6 +69,69 @@ class _MenuOrderScreenState extends State<MenuOrderScreen> {
       (_snapshot['myOrders'] as List<dynamic>? ?? const []).map((o) => Map<String, dynamic>.from(o as Map)).toList();
 
   int get _cartCount => _cart.values.fold(0, (sum, q) => sum + q);
+
+  /// Moneda aleasă de local în editorul de meniu (poate fi și goală).
+  String get _currency => ((_snapshot['menu'] as Map?)?['currency'] as String?) ?? '';
+
+  String _price(int cents) => formatPrice(cents, _currency);
+
+  /// Cât ar fi pe nota cerută acum — comenzile încă nefacturate.
+  int get _billableTotalCents => _snapshot['billableTotalCents'] as int? ?? 0;
+
+  Map<String, dynamic>? get _myBill {
+    final raw = _snapshot['myBill'];
+    return raw is Map ? Map<String, dynamic>.from(raw) : null;
+  }
+
+  bool get _billPending => _myBill != null && _myBill!['handled'] != true;
+
+  Future<void> _requestBill() async {
+    final table = _tableController.text.trim();
+    if (table.isEmpty) {
+      setState(() => _error = tr('menuOrder.enterTable'));
+      return;
+    }
+    final total = _billableTotalCents;
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: Text(tr('bills.confirmTitle')),
+        content: Text(total > 0 ? tr('bills.confirmTotal', {'amount': _price(total)}) : tr('bills.confirmNoOrders')),
+        actions: [
+          TextButton(onPressed: () => Navigator.of(context).pop(false), child: Text(tr('common.cancel'))),
+          FilledButton(onPressed: () => Navigator.of(context).pop(true), child: Text(tr('bills.request'))),
+        ],
+      ),
+    );
+    if (confirmed != true || !mounted) return;
+    setState(() => _error = null);
+    widget.args.onAction({'type': 'request_bill', 'tableLabel': table});
+  }
+
+  /// Ieșirea din meniu: înapoi la ecranul anterior — sau, dacă meniul a fost
+  /// deschis direct din QR-ul mesei (e primul ecran), la meniul principal.
+  void _leave() {
+    final navigator = Navigator.of(context);
+    if (navigator.canPop()) {
+      navigator.maybePop(); // PopScope de mai jos închide conexiunea
+      return;
+    }
+    widget.args.onLeave();
+    navigator.pushAndRemoveUntil(
+      MaterialPageRoute(builder: (context) => const MainMenuScreen()),
+      (route) => false,
+    );
+  }
+
+  /// Totalul coșului, din prețurile afișate în meniu (serverul recalculează
+  /// oricum prețul la primirea comenzii).
+  int get _cartTotalCents {
+    final prices = {for (final i in _items) i['id']: i['priceCents'] as int? ?? 0};
+    return _cart.entries.fold(0, (sum, e) => sum + (prices[e.key] ?? 0) * e.value);
+  }
+
+  static int _orderTotalCents(List<Map<String, dynamic>> lines) =>
+      lines.fold(0, (sum, l) => sum + (l['unitPriceCents'] as int? ?? 0) * (l['quantity'] as int? ?? 0));
 
   void _changeQty(String itemId, int delta) {
     setState(() {
@@ -142,7 +207,12 @@ class _MenuOrderScreenState extends State<MenuOrderScreen> {
       },
       child: Scaffold(
         backgroundColor: const Color(0xFF101418),
-        appBar: AppBar(backgroundColor: Colors.black26, title: Text(tr('game.menu.title')), actions: const [LanguageButton()]),
+        appBar: AppBar(
+          backgroundColor: Colors.black26,
+          leading: IconButton(icon: const Icon(Icons.arrow_back), tooltip: tr('menuOrder.leave'), onPressed: _leave),
+          title: Text(tr('game.menu.title')),
+          actions: const [LanguageButton()],
+        ),
         body: SafeArea(
           child: items.isEmpty
               ? Center(
@@ -167,6 +237,8 @@ class _MenuOrderScreenState extends State<MenuOrderScreen> {
                         enabledBorder: const UnderlineInputBorder(borderSide: BorderSide(color: Colors.white38)),
                       ),
                     ),
+                    const SizedBox(height: 12),
+                    _buildBillSection(),
                     const SizedBox(height: 16),
                     for (final category in categories) ..._buildCategorySection(category, items),
                     ..._buildUncategorizedSection(categories, items),
@@ -176,6 +248,39 @@ class _MenuOrderScreenState extends State<MenuOrderScreen> {
         ),
         bottomNavigationBar: _cartCount == 0 ? null : _buildCartBar(),
       ),
+    );
+  }
+
+  Widget _buildBillSection() {
+    final bill = _myBill;
+    if (_billPending && bill != null) {
+      final total = bill['totalCents'] as int? ?? 0;
+      return Card(
+        color: Colors.amber.withValues(alpha: 0.15),
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(12),
+          side: const BorderSide(color: Colors.amberAccent),
+        ),
+        child: ListTile(
+          leading: const Icon(Icons.receipt_long, color: Colors.amberAccent),
+          title: Text(tr('bills.pending'), style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
+          subtitle: Text(
+            total > 0 ? tr('orders.total', {'amount': _price(total)}) : tr('bills.waiterComing'),
+            style: const TextStyle(color: Colors.white70),
+          ),
+        ),
+      );
+    }
+    final total = _billableTotalCents;
+    return OutlinedButton.icon(
+      style: OutlinedButton.styleFrom(
+        foregroundColor: Colors.amberAccent,
+        side: const BorderSide(color: Colors.amberAccent),
+        padding: const EdgeInsets.symmetric(vertical: 12),
+      ),
+      icon: const Icon(Icons.receipt_long),
+      label: Text(total > 0 ? tr('bills.requestWithTotal', {'amount': _price(total)}) : tr('bills.request')),
+      onPressed: _requestBill,
     );
   }
 
@@ -236,6 +341,9 @@ class _MenuOrderScreenState extends State<MenuOrderScreen> {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text(item['name'] as String, style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w600)),
+                    if (item['priceCents'] is int)
+                      Text(_price(item['priceCents'] as int),
+                          style: const TextStyle(color: Colors.amberAccent, fontWeight: FontWeight.bold, fontSize: 13)),
                     if ((item['description'] as String?)?.isNotEmpty ?? false)
                       Text(item['description'] as String, style: const TextStyle(color: Colors.white54, fontSize: 12)),
                     if (!available) Text(tr('menuOrder.unavailable'), style: const TextStyle(color: Colors.orangeAccent, fontSize: 12)),
@@ -292,7 +400,17 @@ class _MenuOrderScreenState extends State<MenuOrderScreen> {
             ),
             const SizedBox(height: 4),
             for (final line in lines)
-              Text('${line['quantity']}x ${line['name']}', style: const TextStyle(color: Colors.white)),
+              Text(
+                '${line['quantity']}x ${line['name']}'
+                '${line['unitPriceCents'] is int ? ' — ${_price((line['unitPriceCents'] as int) * (line['quantity'] as int))}' : ''}',
+                style: const TextStyle(color: Colors.white),
+              ),
+            if (_orderTotalCents(lines) > 0)
+              Padding(
+                padding: const EdgeInsets.only(top: 4),
+                child: Text(tr('orders.total', {'amount': _price(_orderTotalCents(lines))}),
+                    style: const TextStyle(color: Colors.amberAccent, fontWeight: FontWeight.bold)),
+              ),
           ],
         ),
       ),
@@ -326,7 +444,9 @@ class _MenuOrderScreenState extends State<MenuOrderScreen> {
               width: double.infinity,
               child: FilledButton(
                 onPressed: _submitting ? null : _submit,
-                child: Text(tr('menuOrder.submit', {'n': _cartCount})),
+                child: Text(_cartTotalCents > 0
+                    ? tr('menuOrder.submitWithTotal', {'n': _cartCount, 'amount': _price(_cartTotalCents)})
+                    : tr('menuOrder.submit', {'n': _cartCount})),
               ),
             ),
           ],

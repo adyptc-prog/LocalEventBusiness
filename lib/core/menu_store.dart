@@ -3,6 +3,7 @@ import 'dart:io';
 import 'dart:math';
 import 'dart:typed_data';
 
+import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:path_provider/path_provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
@@ -31,11 +32,16 @@ class MenuStore {
 
   List<MenuCategory> _categories = [];
   List<MenuItem> _items = [];
+  String _currency = '';
   SharedPreferences? _prefs;
   Directory? _photosDir;
 
   List<MenuCategory> get categories => List.unmodifiable(_categories);
   List<MenuItem> get items => List.unmodifiable(_items);
+
+  /// Moneda afișată lângă prețuri („lei", „€", „$"…) — aleasă de
+  /// organizator; goală = prețurile apar fără monedă.
+  String get currency => _currency;
 
   Future<void> init() async {
     _prefs = await SharedPreferences.getInstance();
@@ -49,11 +55,16 @@ class MenuStore {
         _items = (decoded['items'] as List)
             .map((i) => MenuItem.fromJson(Map<String, dynamic>.from(i as Map)))
             .toList();
+        _currency = decoded['currency'] as String? ?? '';
       } catch (_) {
         _categories = [];
         _items = [];
       }
     }
+    // Pozele stau pe disc doar pe telefonul-server — un browser nu are
+    // director de documente (path_provider nu are implementare web), iar
+    // clientul web nu editează meniul oricum.
+    if (kIsWeb) return;
     final docs = await getApplicationDocumentsDirectory();
     _photosDir = Directory('${docs.path}/menu_photos');
     if (!await _photosDir!.exists()) {
@@ -90,6 +101,7 @@ class MenuStore {
     required String name,
     String? description,
     String? photoFile,
+    int? priceCents,
   }) async {
     _items.add(MenuItem(
       id: _newId(),
@@ -97,6 +109,7 @@ class MenuStore {
       name: name,
       description: description,
       photoFile: photoFile,
+      priceCents: priceCents,
     ));
     await _save();
   }
@@ -142,6 +155,19 @@ class MenuStore {
   /// respinge orice valoare cu `/`, `\` sau `..`, ca un client rău-
   /// intenționat să nu poată evada din `menu_photos/` și citi alte fișiere
   /// din directorul de documente al aplicației (path traversal).
+  /// Fișierul pozei pentru afișare locală, pe telefonul-server (editorul de
+  /// meniu) — `null` dacă `init()` n-a pregătit directorul (ex: pe web).
+  File? localPhotoFile(String fileName) {
+    final dir = _photosDir;
+    if (dir == null || fileName.contains('/') || fileName.contains('\\') || fileName.contains('..')) return null;
+    return File('${dir.path}/$fileName');
+  }
+
+  Future<void> setCurrency(String currency) async {
+    _currency = currency.trim();
+    await _save();
+  }
+
   Future<File?> photoFileHandle(String fileName) async {
     if (fileName.contains('/') || fileName.contains('\\') || fileName.contains('..')) return null;
     final dir = _photosDir;
@@ -156,6 +182,7 @@ class MenuStore {
     await _prefs?.setString(_prefsKey, jsonEncode({
       'categories': _categories.map((c) => c.toJson()).toList(),
       'items': _items.map((i) => i.toJson()).toList(),
+      'currency': _currency,
     }));
   }
 
@@ -164,8 +191,9 @@ class MenuStore {
   /// isolate-ul serverului deja pornit (fiecare are propria copie în
   /// memorie, la fel ca `EventConfigStore`). Nu rescrie pe disc — UI-ul deja
   /// a persistat-o.
-  void applyRemote(List<MenuCategory> categories, List<MenuItem> items) {
+  void applyRemote(List<MenuCategory> categories, List<MenuItem> items, {String? currency}) {
     _categories = categories;
     _items = items;
+    if (currency != null) _currency = currency;
   }
 }
