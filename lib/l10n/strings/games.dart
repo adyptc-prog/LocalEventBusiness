@@ -175,4 +175,13 @@ const Map<String, (String, String)> gameStrings = {
   'menuOrder.details.less': ('Mai puțin', 'Fewer'),
   'menuOrder.details.more': ('Mai mult', 'More'),
   'menuOrder.details.inCart': ('{n} în coș · {amount}', '{n} in cart · {amount}'),
+  'menuOrder.cart.title': ('Coșul tău', 'Your cart'),
+  'menuOrder.cart.open': ('Vezi coșul ({n} produse)', 'View cart ({n} items)'),
+  'menuOrder.cart.openWithTotal': ('Vezi coșul ({n} produse · {amount})', 'View cart ({n} items · {amount})'),
+  'menuOrder.cart.empty': ('Coșul e gol. Adaugă produse din meniu.', 'Your cart is empty. Add items from the menu.'),
+  'menuOrder.cart.addMore': ('Adaugă alte produse', 'Add more items'),
+  'menuOrder.cart.remove': ('Scoate din coș', 'Remove from cart'),
+  'menuOrder.cart.clear': ('Golește coșul', 'Empty the cart'),
+  'menuOrder.cart.clearConfirm': ('Scoți toate produsele din coș?', 'Remove all items from the cart?'),
+  'app.version': ('Versiunea {version}', 'Version {version}'),
 };

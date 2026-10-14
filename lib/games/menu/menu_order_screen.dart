@@ -8,6 +8,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 import '../../l10n/money.dart';
 import '../../screens/main_menu_screen.dart';
 import '../../widgets/language_button.dart';
+import '../../widgets/version_badge.dart';
 
 import '../../core/game_definition.dart';
 import '../../l10n/tr.dart';
@@ -37,7 +38,6 @@ class _MenuOrderScreenState extends State<MenuOrderScreen> {
   final Map<String, int> _cart = {};
   StreamSubscription? _stateSub;
   Map<String, dynamic> _snapshot = {};
-  bool _submitting = false;
   String? _error;
 
   /// Coșul încă netrimis (produse, notă, masă) e păstrat pe telefonul
@@ -195,18 +195,19 @@ class _MenuOrderScreenState extends State<MenuOrderScreen> {
     _saveCart();
   }
 
-  Future<void> _submit() async {
+  /// Trimite coșul la bar. Întoarce `true` dacă a plecat comanda — pagina
+  /// coșului se închide atunci; altfel rămâne deschisă cu eroarea afișată.
+  bool _submit() {
     final table = _tableController.text.trim();
     if (table.isEmpty) {
       setState(() => _error = tr('menuOrder.enterTable'));
-      return;
+      return false;
     }
     if (_cart.isEmpty) {
       setState(() => _error = tr('menuOrder.chooseItem'));
-      return;
+      return false;
     }
     setState(() {
-      _submitting = true;
       _error = null;
     });
     widget.args.onAction({
@@ -219,11 +220,63 @@ class _MenuOrderScreenState extends State<MenuOrderScreen> {
       _cart.clear();
       _noteController.clear();
       _saveCart();
-      _submitting = false;
     });
     if (mounted) {
       ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(tr('menuOrder.sent'))));
     }
+    return true;
+  }
+
+  void _removeFromCart(String itemId) {
+    setState(() => _cart.remove(itemId));
+    _saveCart();
+  }
+
+  void _clearCart() {
+    setState(_cart.clear);
+    _saveCart();
+  }
+
+  /// Produsele din coș, în ordinea din meniu; un produs scos între timp din
+  /// meniu rămâne vizibil (fără preț), ca să poată fi șters.
+  List<_CartLine> get _cartLines {
+    final items = _items;
+    final byId = {for (final i in items) i['id'] as String: i};
+    final position = {for (final (index, i) in items.indexed) i['id'] as String: index};
+    final ids = _cart.keys.toList()
+      ..sort((a, b) => (position[a] ?? items.length).compareTo(position[b] ?? items.length));
+    return [
+      for (final id in ids)
+        _CartLine(
+          id: id,
+          name: byId[id]?['name'] as String? ?? tr('menuOrder.unavailable'),
+          quantity: _cart[id]!,
+          unitPriceCents: byId[id]?['priceCents'] as int?,
+          available: byId[id] != null && (byId[id]!['available'] as bool? ?? true),
+        ),
+    ];
+  }
+
+  /// Coșul pe tot ecranul: clientul vede tot ce a ales, modifică sau scoate
+  /// produse și abia apoi trimite comanda la bar.
+  Future<void> _openCart() {
+    setState(() => _error = null);
+    return Navigator.of(context).push(MaterialPageRoute(
+      fullscreenDialog: true,
+      builder: (context) => _MenuCartPage(
+        lines: () => _cartLines,
+        totalCents: () => _cartTotalCents,
+        price: _price,
+        maxQuantity: _maxQtyPerItem,
+        tableController: _tableController,
+        noteController: _noteController,
+        error: () => _error,
+        onChange: _changeQty,
+        onRemove: _removeFromCart,
+        onClear: _clearCart,
+        onSubmit: _submit,
+      ),
+    ));
   }
 
   String? _photoUrl(String? photoFile) {
@@ -265,7 +318,19 @@ class _MenuOrderScreenState extends State<MenuOrderScreen> {
           backgroundColor: Colors.black26,
           leading: IconButton(icon: const Icon(Icons.arrow_back), tooltip: tr('menuOrder.leave'), onPressed: _leave),
           title: Text(tr('game.menu.title')),
-          actions: const [LanguageButton()],
+          actions: [
+            const VersionBadge(),
+            IconButton(
+              tooltip: tr('menuOrder.cart.title'),
+              onPressed: _openCart,
+              icon: Badge(
+                isLabelVisible: _cartCount > 0,
+                label: Text('$_cartCount'),
+                child: const Icon(Icons.shopping_cart_outlined),
+              ),
+            ),
+            const LanguageButton(),
+          ],
         ),
         body: SafeArea(
           child: items.isEmpty
@@ -521,33 +586,16 @@ class _MenuOrderScreenState extends State<MenuOrderScreen> {
       color: Colors.black45,
       child: SafeArea(
         top: false,
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            TextField(
-              controller: _noteController,
-              style: const TextStyle(color: Colors.white),
-              decoration: InputDecoration(
-                hintText: tr('menuOrder.noteHint'),
-                hintStyle: const TextStyle(color: Colors.white38),
-              ),
-            ),
-            if (_error != null)
-              Padding(
-                padding: const EdgeInsets.only(top: 4),
-                child: Text(_error!, style: const TextStyle(color: Colors.orangeAccent)),
-              ),
-            const SizedBox(height: 8),
-            SizedBox(
-              width: double.infinity,
-              child: FilledButton(
-                onPressed: _submitting ? null : _submit,
-                child: Text(_cartTotalCents > 0
-                    ? tr('menuOrder.submitWithTotal', {'n': _cartCount, 'amount': _price(_cartTotalCents)})
-                    : tr('menuOrder.submit', {'n': _cartCount})),
-              ),
-            ),
-          ],
+        child: SizedBox(
+          width: double.infinity,
+          child: FilledButton.icon(
+            style: FilledButton.styleFrom(minimumSize: const Size.fromHeight(52)),
+            icon: const Icon(Icons.shopping_cart),
+            onPressed: _openCart,
+            label: Text(_cartTotalCents > 0
+                ? tr('menuOrder.cart.openWithTotal', {'n': _cartCount, 'amount': _price(_cartTotalCents)})
+                : tr('menuOrder.cart.open', {'n': _cartCount})),
+          ),
         ),
       ),
     );
@@ -700,6 +748,277 @@ class _MenuItemDetailPageState extends State<_MenuItemDetailPage> {
               ),
             ],
           ),
+        ),
+      ),
+    );
+  }
+}
+
+/// Un rând din coș, așa cum îl vede clientul înainte să trimită comanda.
+class _CartLine {
+  final String id;
+  final String name;
+  final int quantity;
+  final int? unitPriceCents;
+  final bool available;
+
+  const _CartLine({
+    required this.id,
+    required this.name,
+    required this.quantity,
+    required this.unitPriceCents,
+    required this.available,
+  });
+}
+
+/// Pagina coșului. Ca la [_MenuItemDetailPage], coșul propriu-zis rămâne în
+/// ecranul de meniu — pagina doar îl citește ([lines]) și îl modifică prin
+/// callback-uri, deci orice schimbare se vede imediat și în meniu (și e
+/// salvată pe telefon). Comanda pleacă la bar doar din butonul de aici.
+class _MenuCartPage extends StatefulWidget {
+  final List<_CartLine> Function() lines;
+  final int Function() totalCents;
+  final String Function(int cents) price;
+  final int maxQuantity;
+  final TextEditingController tableController;
+  final TextEditingController noteController;
+  final String? Function() error;
+  final void Function(String id, int delta) onChange;
+  final void Function(String id) onRemove;
+  final VoidCallback onClear;
+  final bool Function() onSubmit;
+
+  const _MenuCartPage({
+    required this.lines,
+    required this.totalCents,
+    required this.price,
+    required this.maxQuantity,
+    required this.tableController,
+    required this.noteController,
+    required this.error,
+    required this.onChange,
+    required this.onRemove,
+    required this.onClear,
+    required this.onSubmit,
+  });
+
+  @override
+  State<_MenuCartPage> createState() => _MenuCartPageState();
+}
+
+class _MenuCartPageState extends State<_MenuCartPage> {
+  /// Fixat la deschidere, ca rândul să nu se transforme în câmp (sau invers)
+  /// cât timp clientul scrie.
+  late final bool _tableFromQr = widget.tableController.text.trim().isNotEmpty;
+
+  void _run(VoidCallback action) {
+    action();
+    setState(() {});
+  }
+
+  Future<void> _confirmClear() async {
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: Text(tr('menuOrder.cart.clearConfirm')),
+        actions: [
+          TextButton(onPressed: () => Navigator.of(context).pop(false), child: Text(tr('common.cancel'))),
+          FilledButton(onPressed: () => Navigator.of(context).pop(true), child: Text(tr('menuOrder.cart.clear'))),
+        ],
+      ),
+    );
+    if (confirmed == true && mounted) _run(widget.onClear);
+  }
+
+  void _send() {
+    if (widget.onSubmit()) {
+      Navigator.of(context).pop();
+    } else {
+      setState(() {}); // arată eroarea (ex: lipsește masa)
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final lines = widget.lines();
+    final count = lines.fold(0, (sum, l) => sum + l.quantity);
+    final total = widget.totalCents();
+    final error = widget.error();
+
+    return Scaffold(
+      backgroundColor: const Color(0xFF101418),
+      appBar: AppBar(
+        backgroundColor: Colors.black26,
+        leading: IconButton(
+          icon: const Icon(Icons.close),
+          tooltip: tr('menuOrder.details.back'),
+          onPressed: () => Navigator.of(context).pop(),
+        ),
+        title: Text(tr('menuOrder.cart.title')),
+        actions: [
+          if (lines.isNotEmpty)
+            IconButton(
+              icon: const Icon(Icons.delete_sweep_outlined),
+              tooltip: tr('menuOrder.cart.clear'),
+              onPressed: _confirmClear,
+            ),
+          const LanguageButton(),
+        ],
+      ),
+      body: SafeArea(
+        child: lines.isEmpty
+            ? Center(
+                child: Padding(
+                  padding: const EdgeInsets.all(24),
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      const Icon(Icons.shopping_cart_outlined, color: Colors.white38, size: 64),
+                      const SizedBox(height: 12),
+                      Text(tr('menuOrder.cart.empty'),
+                          textAlign: TextAlign.center, style: const TextStyle(color: Colors.white54, fontSize: 16)),
+                      const SizedBox(height: 16),
+                      OutlinedButton.icon(
+                        icon: const Icon(Icons.restaurant_menu),
+                        label: Text(tr('menuOrder.details.back')),
+                        onPressed: () => Navigator.of(context).pop(),
+                      ),
+                    ],
+                  ),
+                ),
+              )
+            : ListView(
+                padding: const EdgeInsets.fromLTRB(16, 12, 16, 24),
+                children: [
+                  for (final line in lines) _buildLine(line),
+                  Align(
+                    alignment: Alignment.centerLeft,
+                    child: TextButton.icon(
+                      icon: const Icon(Icons.add),
+                      label: Text(tr('menuOrder.cart.addMore')),
+                      onPressed: () => Navigator.of(context).pop(),
+                    ),
+                  ),
+                  if (total > 0)
+                    Padding(
+                      padding: const EdgeInsets.symmetric(vertical: 8),
+                      child: Text(tr('orders.total', {'amount': widget.price(total)}),
+                          textAlign: TextAlign.right,
+                          style: const TextStyle(color: Colors.amberAccent, fontSize: 20, fontWeight: FontWeight.bold)),
+                    ),
+                  const Divider(color: Colors.white24),
+                  // Masa vine din QR-ul scanat — aici doar o arătăm. Câmpul
+                  // apare numai dacă meniul a fost deschis fără QR.
+                  if (_tableFromQr)
+                    Row(
+                      children: [
+                        const Icon(Icons.table_restaurant, color: Colors.white54, size: 20),
+                        const SizedBox(width: 8),
+                        Text(tr('orders.table', {'table': widget.tableController.text.trim()}),
+                            style: const TextStyle(color: Colors.white70, fontSize: 16)),
+                      ],
+                    )
+                  else
+                    TextField(
+                      controller: widget.tableController,
+                      style: const TextStyle(color: Colors.white),
+                      decoration: InputDecoration(
+                        labelText: tr('menuOrder.table'),
+                        labelStyle: const TextStyle(color: Colors.white70),
+                        enabledBorder: const UnderlineInputBorder(borderSide: BorderSide(color: Colors.white38)),
+                      ),
+                    ),
+                  const SizedBox(height: 8),
+                  TextField(
+                    controller: widget.noteController,
+                    style: const TextStyle(color: Colors.white),
+                    maxLines: null,
+                    decoration: InputDecoration(
+                      hintText: tr('menuOrder.noteHint'),
+                      hintStyle: const TextStyle(color: Colors.white38),
+                    ),
+                  ),
+                ],
+              ),
+      ),
+      bottomNavigationBar: lines.isEmpty
+          ? null
+          : Container(
+              padding: const EdgeInsets.fromLTRB(16, 8, 16, 16),
+              color: Colors.black45,
+              child: SafeArea(
+                top: false,
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    if (error != null)
+                      Padding(
+                        padding: const EdgeInsets.only(bottom: 8),
+                        child: Text(error, style: const TextStyle(color: Colors.orangeAccent)),
+                      ),
+                    SizedBox(
+                      width: double.infinity,
+                      child: FilledButton.icon(
+                        style: FilledButton.styleFrom(minimumSize: const Size.fromHeight(52)),
+                        icon: const Icon(Icons.send),
+                        onPressed: _send,
+                        label: Text(total > 0
+                            ? tr('menuOrder.submitWithTotal', {'n': count, 'amount': widget.price(total)})
+                            : tr('menuOrder.submit', {'n': count})),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+    );
+  }
+
+  Widget _buildLine(_CartLine line) {
+    final price = line.unitPriceCents;
+    return Card(
+      color: Colors.white10,
+      margin: const EdgeInsets.only(bottom: 8),
+      child: Padding(
+        padding: const EdgeInsets.fromLTRB(12, 8, 4, 8),
+        child: Row(
+          children: [
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(line.name, style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w600, fontSize: 16)),
+                  if (price != null)
+                    Text(
+                      line.quantity > 1
+                          ? '${line.quantity} × ${widget.price(price)} = ${widget.price(price * line.quantity)}'
+                          : widget.price(price),
+                      style: const TextStyle(color: Colors.amberAccent),
+                    ),
+                  if (!line.available)
+                    Text(tr('menuOrder.unavailable'), style: const TextStyle(color: Colors.orangeAccent, fontSize: 12)),
+                ],
+              ),
+            ),
+            IconButton(
+              icon: const Icon(Icons.remove_circle_outline, color: Colors.white70),
+              tooltip: tr('menuOrder.details.less'),
+              onPressed: () => _run(() => widget.onChange(line.id, -1)),
+            ),
+            Text('${line.quantity}', style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 16)),
+            IconButton(
+              icon: const Icon(Icons.add_circle_outline, color: Colors.lightGreenAccent),
+              tooltip: tr('menuOrder.details.more'),
+              onPressed: !line.available || line.quantity >= widget.maxQuantity
+                  ? null
+                  : () => _run(() => widget.onChange(line.id, 1)),
+            ),
+            IconButton(
+              icon: const Icon(Icons.delete_outline, color: Colors.redAccent),
+              tooltip: tr('menuOrder.cart.remove'),
+              onPressed: () => _run(() => widget.onRemove(line.id)),
+            ),
+          ],
         ),
       ),
     );

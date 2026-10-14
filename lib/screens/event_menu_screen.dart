@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import '../core/activity_catalog.dart';
 import '../core/games_registry.dart';
 import '../widgets/language_button.dart';
+import '../widgets/version_badge.dart';
 import '../widgets/menu_card.dart';
 import 'game_library_screen.dart';
 import 'menu_connect_screen.dart';
@@ -55,7 +56,7 @@ class EventMenuScreen extends StatelessWidget {
 
     return Scaffold(
       backgroundColor: const Color(0xFF101418),
-      appBar: AppBar(backgroundColor: Colors.black26, title: Text(tr('eventMenu.title')), actions: const [LanguageButton()]),
+      appBar: AppBar(backgroundColor: Colors.black26, title: Text(tr('eventMenu.title')), actions: const [VersionBadge(), LanguageButton()]),
       body: SafeArea(
         child: Padding(
           padding: const EdgeInsets.all(24),

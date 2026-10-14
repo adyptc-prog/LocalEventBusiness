@@ -9,6 +9,7 @@ import '../network/client_service.dart';
 import '../network/event_server_runner.dart';
 import '../network/event_server_service.dart';
 import '../widgets/language_button.dart';
+import '../widgets/version_badge.dart';
 import 'lobby_screen.dart';
 import 'main_menu_screen.dart';
 import '../l10n/tr.dart';
@@ -150,7 +151,7 @@ class _MenuConnectScreenState extends State<MenuConnectScreen> {
                 ),
               ),
         title: Text(tr('game.menu.title')),
-        actions: const [LanguageButton()],
+        actions: const [VersionBadge(), LanguageButton()],
       ),
       body: SafeArea(
         child: Padding(

@@ -6,6 +6,7 @@ import 'package:flutter/material.dart';
 import '../network/client_service.dart';
 import '../network/event_server_service.dart';
 import '../widgets/language_button.dart';
+import '../widgets/version_badge.dart';
 import 'event_menu_screen.dart';
 import '../l10n/tr.dart';
 
@@ -103,7 +104,7 @@ class _EventConnectScreenState extends State<EventConnectScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: const Color(0xFF101418),
-      appBar: AppBar(backgroundColor: Colors.black26, title: Text(tr('mainMenu.join.title')), actions: const [LanguageButton()]),
+      appBar: AppBar(backgroundColor: Colors.black26, title: Text(tr('mainMenu.join.title')), actions: const [VersionBadge(), LanguageButton()]),
       body: SafeArea(
         child: Padding(
           padding: const EdgeInsets.all(16),
