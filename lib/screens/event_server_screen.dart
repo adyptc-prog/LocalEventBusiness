@@ -6,8 +6,10 @@ import '../network/event_server_runner.dart';
 import '../network/event_server_service.dart' show EventServerService;
 import '../core/activity_catalog.dart';
 import '../core/network_address.dart';
+import '../core/qr_address_monitor.dart';
 import '../network/lobby_room.dart';
 import '../widgets/language_button.dart';
+import '../widgets/qr_address_banner.dart';
 import '../l10n/tr.dart';
 
 /// Ecranul telefonului-server dedicat al evenimentului: pornește serverul
@@ -94,6 +96,8 @@ class _EventServerScreenState extends State<EventServerScreen> {
         _localIp = ip;
         _starting = false;
       });
+      // Avertizarea despre codurile QR apare imediat, nu la următoarea verificare.
+      QrAddressMonitor.instance.refresh();
     } catch (e) {
       if (!mounted) return;
       setState(() {
@@ -107,6 +111,7 @@ class _EventServerScreenState extends State<EventServerScreen> {
     await _roomsSub?.cancel();
     _roomsSub = null;
     await EventServerRunner.stop();
+    QrAddressMonitor.instance.refresh();
     if (!mounted) return;
     setState(() {
       _running = false;
@@ -121,9 +126,16 @@ class _EventServerScreenState extends State<EventServerScreen> {
       backgroundColor: const Color(0xFF101418),
       appBar: AppBar(backgroundColor: Colors.black26, title: Text(tr('eventServer.title')), actions: const [LanguageButton()]),
       body: SafeArea(
-        child: Padding(
-          padding: const EdgeInsets.all(24),
-          child: _running ? _buildRunning() : _buildStart(),
+        child: Column(
+          children: [
+            const QrAddressBanner(),
+            Expanded(
+              child: Padding(
+                padding: const EdgeInsets.all(24),
+                child: _running ? _buildRunning() : _buildStart(),
+              ),
+            ),
+          ],
         ),
       ),
     );

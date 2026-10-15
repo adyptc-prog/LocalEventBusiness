@@ -8,7 +8,8 @@ import 'core/leaderboard_store.dart';
 import 'core/menu_store.dart';
 import 'core/organizer_key_store.dart';
 import 'core/player_profile.dart';
-import 'core/table_config_store.dart';
+import 'core/qr_cards.dart';
+import 'core/qr_cards_store.dart';
 import 'l10n/tr.dart';
 import 'network/event_server_runner.dart';
 import 'screens/main_menu_screen.dart';
@@ -35,12 +36,12 @@ Future<void> main() async {
   await EventConfigStore.instance.init();
   await MenuStore.instance.init();
   await OrganizerKeyStore.instance.init();
-  await TableConfigStore.instance.init();
+  await QrCardsStore.instance.init();
   runApp(const MacaoApp());
 }
 
-/// `true` când clientul web a fost deschis prin codul QR al unei mese.
-bool get openedFromTableQr => kIsWeb && Uri.base.queryParameters.containsKey('table');
+/// `true` când clientul web a fost deschis din codul QR de meniu de pe mese.
+bool get openedFromQr => kIsWeb && openedFromMenuQr(Uri.base);
 
 class MacaoApp extends StatelessWidget {
   const MacaoApp({super.key});
@@ -62,9 +63,9 @@ class MacaoApp extends StatelessWidget {
           colorScheme: ColorScheme.fromSeed(seedColor: const Color(0xFF0B5E3B), brightness: Brightness.dark),
           useMaterial3: true,
         ),
-        // Un QR de masă (`/?table=N`) duce direct la meniu — invitatul care l-a
-        // scanat vrea să comande, nu să aleagă din meniul principal.
-        home: openedFromTableQr ? const MenuConnectScreen() : const MainMenuScreen(),
+        // QR-ul de meniu de pe mese (`/?menu`) duce direct la meniu — invitatul
+        // care l-a scanat vrea să comande, nu să aleagă din meniul principal.
+        home: openedFromQr ? const MenuConnectScreen() : const MainMenuScreen(),
       ),
     );
   }

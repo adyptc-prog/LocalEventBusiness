@@ -6,7 +6,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:local_event_business/core/menu_item.dart';
 import 'package:local_event_business/core/menu_store.dart';
 import 'package:local_event_business/core/order.dart';
-import 'package:local_event_business/core/table_cards.dart';
+import 'package:local_event_business/core/qr_cards.dart';
 import 'package:local_event_business/l10n/money.dart';
 import 'package:local_event_business/l10n/tr.dart';
 import 'package:local_event_business/network/event_server_service_io.dart';
@@ -150,26 +150,44 @@ void main() {
     });
   });
 
-  group('cartonașe QR de tipărit', () {
-    testWidgets('imaginea unui cartonaș e un PNG pătrat', (tester) async {
-      final png = await tester.runAsync(
-        () => TableCards.renderTableCardPng(table: 5, url: 'http://192.168.1.10:45034/?table=5', wifiInfo: 'Cafenea'),
-      );
-      expect(png!.sublist(0, 8), [0x89, 0x50, 0x4E, 0x47, 0x0D, 0x0A, 0x1A, 0x0A]);
-      // lățimea și înălțimea din antetul IHDR
-      final width = (png[16] << 24) | (png[17] << 16) | (png[18] << 8) | png[19];
-      final height = (png[20] << 24) | (png[21] << 16) | (png[22] << 8) | png[23];
-      expect(width, TableCards.cardPixels);
-      expect(height, TableCards.cardPixels);
+  group('cartonașul QR de tipărit', () {
+    testWidgets('imaginea cartonașului e un PNG pătrat, cu sau fără Wi-Fi', (tester) async {
+      for (final ssid in ['Cafenea', '']) {
+        final png = await tester.runAsync(
+          () => QrCards.renderCardPng(menuUrl: menuUrlFor('192.168.1.10'), wifiSsid: ssid, wifiPassword: 'parola123'),
+        );
+        expect(png!.sublist(0, 8), [0x89, 0x50, 0x4E, 0x47, 0x0D, 0x0A, 0x1A, 0x0A]);
+        // lățimea și înălțimea din antetul IHDR
+        final width = (png[16] << 24) | (png[17] << 16) | (png[18] << 8) | png[19];
+        final height = (png[20] << 24) | (png[21] << 16) | (png[22] << 8) | png[23];
+        expect(width, QrCards.cardPixels);
+        expect(height, QrCards.cardPixels);
+      }
     });
 
-    testWidgets('PDF-ul are câte 6 mese pe pagină', (tester) async {
-      final pdf = await tester.runAsync(
-        () => TableCards.buildTablesPdf(tableCount: 7, urlFor: (t) => 'http://192.168.1.10:45034/?table=$t'),
-      );
+    testWidgets('PDF-ul are câte 6 cartonașe pe pagină', (tester) async {
+      final pdf = await tester.runAsync(() async {
+        final card = await QrCards.renderCardPng(menuUrl: menuUrlFor('192.168.1.10'));
+        return QrCards.buildCardsPdf(card: card, copies: 7);
+      });
       expect(ascii.decode(pdf!.sublist(0, 5)), '%PDF-');
       final text = latin1.decode(pdf);
-      expect(RegExp(r'/Type\s*/Page[^s]').allMatches(text).length, 2, reason: '7 mese → 2 pagini');
+      expect(RegExp(r'/Type\s*/Page[^s]').allMatches(text).length, 2, reason: '7 cartonașe → 2 pagini');
+    });
+
+    test('link-ul de meniu nu are număr de masă și e recunoscut la deschidere', () {
+      final url = menuUrlFor('192.168.1.10');
+      expect(url, 'http://192.168.1.10:45034/?menu');
+      expect(openedFromMenuQr(Uri.parse(url)), isTrue);
+      // cartonașele vechi, numerotate, merg în continuare
+      expect(openedFromMenuQr(Uri.parse('http://192.168.1.10:45034/?table=5')), isTrue);
+      expect(openedFromMenuQr(Uri.parse('http://192.168.1.10:45034/')), isFalse);
+    });
+
+    test('QR-ul de Wi-Fi are formatul recunoscut de telefoane', () {
+      expect(wifiQrPayload(ssid: 'Cafenea', password: 'parola123'), 'WIFI:T:WPA;S:Cafenea;P:parola123;;');
+      expect(wifiQrPayload(ssid: 'Cafenea', password: ''), 'WIFI:T:nopass;S:Cafenea;;');
+      expect(wifiQrPayload(ssid: 'Bar;Nou', password: r'a:b"c\d'), r'WIFI:T:WPA;S:Bar\;Nou;P:a\:b\"c\\d;;');
     });
   });
 }

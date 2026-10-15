@@ -807,10 +807,6 @@ class _MenuCartPage extends StatefulWidget {
 }
 
 class _MenuCartPageState extends State<_MenuCartPage> {
-  /// Fixat la deschidere, ca rândul să nu se transforme în câmp (sau invers)
-  /// cât timp clientul scrie.
-  late final bool _tableFromQr = widget.tableController.text.trim().isNotEmpty;
-
   void _run(VoidCallback action) {
     action();
     setState(() {});
@@ -907,27 +903,19 @@ class _MenuCartPageState extends State<_MenuCartPage> {
                           style: const TextStyle(color: Colors.amberAccent, fontSize: 20, fontWeight: FontWeight.bold)),
                     ),
                   const Divider(color: Colors.white24),
-                  // Masa vine din QR-ul scanat — aici doar o arătăm. Câmpul
-                  // apare numai dacă meniul a fost deschis fără QR.
-                  if (_tableFromQr)
-                    Row(
-                      children: [
-                        const Icon(Icons.table_restaurant, color: Colors.white54, size: 20),
-                        const SizedBox(width: 8),
-                        Text(tr('orders.table', {'table': widget.tableController.text.trim()}),
-                            style: const TextStyle(color: Colors.white70, fontSize: 16)),
-                      ],
-                    )
-                  else
-                    TextField(
-                      controller: widget.tableController,
-                      style: const TextStyle(color: Colors.white),
-                      decoration: InputDecoration(
-                        labelText: tr('menuOrder.table'),
-                        labelStyle: const TextStyle(color: Colors.white70),
-                        enabledBorder: const UnderlineInputBorder(borderSide: BorderSide(color: Colors.white38)),
-                      ),
+                  // Cartonașul QR e același pe toate mesele, deci clientul își
+                  // scrie singur masa (precompletată dacă a scris-o deja sus).
+                  TextField(
+                    controller: widget.tableController,
+                    style: const TextStyle(color: Colors.white),
+                    keyboardType: TextInputType.text,
+                    decoration: InputDecoration(
+                      labelText: tr('menuOrder.table'),
+                      prefixIcon: const Icon(Icons.table_restaurant, color: Colors.white54),
+                      labelStyle: const TextStyle(color: Colors.white70),
+                      enabledBorder: const UnderlineInputBorder(borderSide: BorderSide(color: Colors.white38)),
                     ),
+                  ),
                   const SizedBox(height: 8),
                   TextField(
                     controller: widget.noteController,

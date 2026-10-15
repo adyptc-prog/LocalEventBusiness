@@ -1,3 +1,4 @@
+import '../core/qr_cards.dart';
 import 'dart:async';
 
 import 'package:flutter/foundation.dart';
@@ -18,8 +19,9 @@ import '../l10n/tr.dart';
 /// de `RoomBrowserScreen`, nu arată niciun ecran de creare/alăturare cameră:
 /// se conectează la server și se alătură direct camerei singleton „MENU"
 /// (creată automat de server la pornire, vezi `EventServerService.start`).
-/// Pe web, dacă link-ul are `?table=`, se conectează automat, fără niciun
-/// tap — exact experiența „scanează QR-ul mesei și comandă".
+/// Pe web, dacă link-ul vine din QR-ul de meniu (`?menu`, sau `?table=` de
+/// pe cartonașele mai vechi), se conectează automat, fără niciun tap —
+/// exact experiența „scanează QR-ul de pe masă și comandă".
 class MenuConnectScreen extends StatefulWidget {
   const MenuConnectScreen({super.key});
 
@@ -46,7 +48,7 @@ class _MenuConnectScreenState extends State<MenuConnectScreen> {
     super.initState();
     _clientService = ClientService();
     if (kIsWeb) {
-      if (Uri.base.queryParameters.containsKey('table')) {
+      if (openedFromMenuQr(Uri.base)) {
         WidgetsBinding.instance.addPostFrameCallback((_) => _connectWebAddress());
       }
     } else {

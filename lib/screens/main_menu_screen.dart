@@ -4,6 +4,7 @@ import '../core/backup_service.dart';
 import '../core/platform_support.dart';
 import '../widgets/language_button.dart';
 import '../widgets/menu_card.dart';
+import '../widgets/qr_address_banner.dart';
 import '../widgets/version_badge.dart';
 import 'activity_config_screen.dart';
 import 'backup_screen.dart';
@@ -14,7 +15,7 @@ import 'menu_editor_screen.dart';
 import 'orders_dashboard_screen.dart';
 import 'participants_screen.dart';
 import 'room_monitor_screen.dart';
-import 'tables_screen.dart';
+import 'qr_cards_screen.dart';
 import '../l10n/tr.dart';
 
 /// Ecranul de start al aplicației. Butonul principal duce la conectarea la
@@ -33,6 +34,7 @@ class MainMenuScreen extends StatelessWidget {
       body: SafeArea(
         child: Column(
           children: [
+            const QrAddressBanner(),
             Padding(
               padding: const EdgeInsets.fromLTRB(24, 24, 24, 8),
               child: Column(
@@ -147,7 +149,7 @@ class MainMenuScreen extends StatelessWidget {
                           label: Text(tr('mainMenu.tables')),
                           style: OutlinedButton.styleFrom(foregroundColor: Colors.white70, side: const BorderSide(color: Colors.white24)),
                           onPressed: () => Navigator.of(context).push(
-                            MaterialPageRoute(builder: (context) => const TablesScreen()),
+                            MaterialPageRoute(builder: (context) => const QrCardsScreen()),
                           ),
                         ),
                       ),

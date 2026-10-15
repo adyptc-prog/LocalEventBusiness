@@ -8,6 +8,7 @@ import '../core/order.dart';
 import '../network/event_server_runner.dart';
 import '../l10n/money.dart';
 import '../widgets/language_button.dart';
+import '../widgets/qr_address_banner.dart';
 import '../l10n/tr.dart';
 import 'closed_orders_screen.dart';
 
@@ -176,46 +177,53 @@ class _OrdersDashboardScreenState extends State<OrdersDashboardScreen> {
         ],
       ),
       body: SafeArea(
-        child: nothing
-            ? Center(child: Text(tr('orders.none'), style: const TextStyle(color: Colors.white38)))
-            : ListView(
-                padding: const EdgeInsets.all(16),
-                children: [
-                  if (openBills.isNotEmpty) ...[
-                    _sectionTitle(tr('bills.requested', {'n': openBills.length}), color: Colors.amberAccent),
-                    for (final bill in openBills) _buildBillCard(bill),
-                    const SizedBox(height: 16),
-                  ],
-                  if (inProgress.isNotEmpty) ...[
-                    _sectionTitle(tr('orders.inProgress', {'n': inProgress.length})),
-                    for (final order in inProgress) _buildOrderCard(order),
-                    const SizedBox(height: 16),
-                  ],
-                  if (ready.isNotEmpty) ...[
-                    _sectionTitle(tr('orders.readyToServe', {'n': ready.length})),
-                    for (final order in ready) _buildOrderCard(order),
-                    const SizedBox(height: 16),
-                  ],
-                  if (openTables.isNotEmpty) ...[
-                    Row(
+        child: Column(
+          children: [
+            const QrAddressBanner(),
+            Expanded(
+              child: nothing
+                  ? Center(child: Text(tr('orders.none'), style: const TextStyle(color: Colors.white38)))
+                  : ListView(
+                      padding: const EdgeInsets.all(16),
                       children: [
-                        Expanded(child: _sectionTitle(tr('orders.openTables', {'n': openTables.length}))),
-                        if (openTables.length > 1)
-                          Padding(
-                            padding: const EdgeInsets.only(bottom: 8),
-                            child: TextButton.icon(
-                              style: TextButton.styleFrom(foregroundColor: Colors.lightGreenAccent),
-                              icon: const Icon(Icons.done_all, size: 18),
-                              label: Text(tr('orders.closeAll.button')),
-                              onPressed: () => _confirmCloseAll(openTables),
-                            ),
+                        if (openBills.isNotEmpty) ...[
+                          _sectionTitle(tr('bills.requested', {'n': openBills.length}), color: Colors.amberAccent),
+                          for (final bill in openBills) _buildBillCard(bill),
+                          const SizedBox(height: 16),
+                        ],
+                        if (inProgress.isNotEmpty) ...[
+                          _sectionTitle(tr('orders.inProgress', {'n': inProgress.length})),
+                          for (final order in inProgress) _buildOrderCard(order),
+                          const SizedBox(height: 16),
+                        ],
+                        if (ready.isNotEmpty) ...[
+                          _sectionTitle(tr('orders.readyToServe', {'n': ready.length})),
+                          for (final order in ready) _buildOrderCard(order),
+                          const SizedBox(height: 16),
+                        ],
+                        if (openTables.isNotEmpty) ...[
+                          Row(
+                            children: [
+                              Expanded(child: _sectionTitle(tr('orders.openTables', {'n': openTables.length}))),
+                              if (openTables.length > 1)
+                                Padding(
+                                  padding: const EdgeInsets.only(bottom: 8),
+                                  child: TextButton.icon(
+                                    style: TextButton.styleFrom(foregroundColor: Colors.lightGreenAccent),
+                                    icon: const Icon(Icons.done_all, size: 18),
+                                    label: Text(tr('orders.closeAll.button')),
+                                    onPressed: () => _confirmCloseAll(openTables),
+                                  ),
+                                ),
+                            ],
                           ),
+                          for (final table in openTables) _buildOpenTableRow(table),
+                        ],
                       ],
                     ),
-                    for (final table in openTables) _buildOpenTableRow(table),
-                  ],
-                ],
-              ),
+            ),
+          ],
+        ),
       ),
     );
   }
