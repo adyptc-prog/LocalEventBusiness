@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  Backup-ul automat Google (Android 11 și mai vechi). Exclusă starea locală
+  a acestui telefon: folderul și parola de backup (cheia lor stă în Android
+  Keystore, deci pe alt telefon n-ar mai putea fi citite) și copia de
+  siguranță dinaintea unei restaurări.
+-->
+<full-backup-content>
+    <exclude domain="sharedpref" path="BackupPrefs.xml" />
+    <exclude domain="file" path="before_restore.lebbackup" />
+</full-backup-content>

@@ -1,10 +1,12 @@
 import 'package:flutter/material.dart';
 
+import '../core/backup_service.dart';
 import '../core/platform_support.dart';
 import '../widgets/language_button.dart';
 import '../widgets/menu_card.dart';
 import '../widgets/version_badge.dart';
 import 'activity_config_screen.dart';
+import 'backup_screen.dart';
 import 'event_connect_screen.dart';
 import 'event_server_screen.dart';
 import 'leaderboard_screen.dart';
@@ -43,6 +45,14 @@ class MainMenuScreen extends StatelessWidget {
                       const Icon(Icons.hub, size: 44, color: Colors.white),
                       const Spacer(),
                       const VersionBadge(),
+                      if (BackupService.isSupported)
+                        IconButton(
+                          icon: const Icon(Icons.settings_backup_restore, color: Colors.white),
+                          tooltip: tr('backup.open'),
+                          onPressed: () => Navigator.of(context).push(
+                            MaterialPageRoute(builder: (context) => const BackupScreen()),
+                          ),
+                        ),
                       const LanguageButton(),
                       const SizedBox(width: 4),
                       IconButton.filledTonal(

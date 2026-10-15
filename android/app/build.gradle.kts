@@ -73,4 +73,11 @@ flutter {
 
 dependencies {
     coreLibraryDesugaring("com.android.tools:desugar_jdk_libs:2.1.4")
+    // Backup-ul automat zilnic (LocalEventBackupWorker)
+    implementation("androidx.work:work-runtime-ktx:2.9.1")
+
+    testImplementation("junit:junit:4.13.2")
+    // android.jar conține doar stub-uri pentru org.json — testele JVM au
+    // nevoie de implementarea reală.
+    testImplementation("org.json:json:20240303")
 }
