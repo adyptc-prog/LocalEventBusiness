@@ -2,6 +2,8 @@
 // widget-urilor comune. Fiecare intrare: cheie → (română, engleză).
 
 const Map<String, (String, String)> screenStrings = {
+  'activation.title': ('Aplicația nu este activată pe acest telefon', 'The app is not activated on this phone'),
+  'activation.body': ('Această copie nu a fost instalată de organizator, așa că nu poate fi folosită. Cere organizatorului să o instaleze pe telefon.', 'This copy was not installed by the organizer, so it cannot be used. Ask the organizer to install it on this phone.'),
   'server.notif.channel': ('Server local', 'Local server'),
   'server.notif.channelDesc': ('Rulează cât timp serverul localului e activ.', 'Runs while the venue server is active.'),
   'server.notif.title': ('Server local activ', 'Local server running'),
