@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import '../core/backup_service.dart';
+import '../core/license_service.dart';
 import '../core/platform_support.dart';
 import '../widgets/language_button.dart';
 import '../widgets/menu_card.dart';
@@ -11,6 +12,7 @@ import 'backup_screen.dart';
 import 'event_connect_screen.dart';
 import 'event_server_screen.dart';
 import 'leaderboard_screen.dart';
+import 'license_screen.dart';
 import 'menu_editor_screen.dart';
 import 'orders_dashboard_screen.dart';
 import 'participants_screen.dart';
@@ -26,6 +28,9 @@ import '../l10n/tr.dart';
 /// serverul fără să depindă de conexiunea la el însuși.
 class MainMenuScreen extends StatelessWidget {
   const MainMenuScreen({super.key});
+
+  static void _openLicense(BuildContext context) =>
+      Navigator.of(context).push(MaterialPageRoute(builder: (context) => const LicenseScreen()));
 
   @override
   Widget build(BuildContext context) {
@@ -47,6 +52,12 @@ class MainMenuScreen extends StatelessWidget {
                       const Icon(Icons.hub, size: 44, color: Colors.white),
                       const Spacer(),
                       const VersionBadge(),
+                      if (LicenseService.isSupported)
+                        IconButton(
+                          icon: const Icon(Icons.verified_user_outlined, color: Colors.white),
+                          tooltip: tr('license.open'),
+                          onPressed: () => _openLicense(context),
+                        ),
                       if (BackupService.isSupported)
                         IconButton(
                           icon: const Icon(Icons.settings_backup_restore, color: Colors.white),
@@ -77,6 +88,7 @@ class MainMenuScreen extends StatelessWidget {
                   ),
                   const SizedBox(height: 4),
                   Text(tr('mainMenu.tagline'), style: const TextStyle(color: Colors.white54)),
+                  if (LicenseService.isSupported) _LicenseBadge(onTap: () => _openLicense(context)),
                 ],
               ),
             ),
@@ -185,6 +197,41 @@ class MainMenuScreen extends StatelessWidget {
           ],
         ),
       ),
+    );
+  }
+}
+
+/// Proba în curs sau licența care expiră curând — vizibile din meniul
+/// principal, ca organizatorul să nu fie surprins de blocare.
+class _LicenseBadge extends StatelessWidget {
+  final VoidCallback onTap;
+
+  const _LicenseBadge({required this.onTap});
+
+  @override
+  Widget build(BuildContext context) {
+    return ListenableBuilder(
+      listenable: LicenseService.instance,
+      builder: (context, _) {
+        final license = LicenseService.instance;
+        final String text;
+        if (license.isLicensed) {
+          if (!license.isExpiringSoon) return const SizedBox.shrink();
+          text = tr('license.badge.expiring', {'days': license.daysUntilExpiry ?? 0});
+        } else if (license.trialActive) {
+          text = tr('license.badge.trial', {'days': license.trialDaysLeft});
+        } else {
+          return const SizedBox.shrink();
+        }
+        return Padding(
+          padding: const EdgeInsets.only(top: 8),
+          child: ActionChip(
+            avatar: const Icon(Icons.schedule, size: 18, color: Colors.orangeAccent),
+            label: Text(text),
+            onPressed: onTap,
+          ),
+        );
+      },
     );
   }
 }

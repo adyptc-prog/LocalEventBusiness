@@ -5,4 +5,4 @@
 /// dinainte de `+`) — `test/app_version_test.dart` verifică asta. E o
 /// constantă în cod, nu citită la rulare, ca să apară la fel și în clientul
 /// web servit de telefonul-server, fără nicio cerere în plus.
-const String appVersion = '1.3.0';
+const String appVersion = '1.4.0';

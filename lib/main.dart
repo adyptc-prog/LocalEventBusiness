@@ -3,8 +3,8 @@ import 'package:flutter/material.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
 
 import 'core/event_config_store.dart';
-import 'core/install_activation.dart';
 import 'core/leaderboard_store.dart';
+import 'core/license_service.dart';
 import 'core/menu_store.dart';
 import 'core/organizer_key_store.dart';
 import 'core/player_profile.dart';
@@ -14,18 +14,11 @@ import 'l10n/tr.dart';
 import 'network/event_server_runner.dart';
 import 'screens/main_menu_screen.dart';
 import 'screens/menu_connect_screen.dart';
-import 'screens/not_activated_screen.dart';
 import 'widgets/language_button.dart';
+import 'widgets/license_gate.dart';
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
-  // Pe un telefon unde aplicația n-a fost instalată de organizator nu
-  // pornește nimic altceva — nici serverul, nici restul ecranelor.
-  if (!await InstallActivation.check()) {
-    await LanguageController.instance.init();
-    runApp(const NotActivatedApp());
-    return;
-  }
   // Inițializează portul de comunicare cu foreground service-ul serverului
   // de eveniment (dacă rulează deja dintr-o sesiune anterioară, se
   // reatașează la el) — trebuie apelat înainte de `runApp`.
@@ -37,6 +30,8 @@ Future<void> main() async {
   await MenuStore.instance.init();
   await OrganizerKeyStore.instance.init();
   await QrCardsStore.instance.init();
+  // Licența / proba (doar Android) — `LicenseGate` decide ce se afișează.
+  await LicenseService.instance.refresh();
   runApp(const MacaoApp());
 }
 
@@ -55,7 +50,7 @@ class MacaoApp extends StatelessWidget {
         locale: LanguageController.instance.language.locale,
         supportedLocales: [for (final l in AppLanguage.values) l.locale],
         localizationsDelegates: GlobalMaterialLocalizations.delegates,
-        builder: (context, child) => LanguageRebuilder(child: child ?? const SizedBox.shrink()),
+        builder: (context, child) => LanguageRebuilder(child: LicenseGate(child: child ?? const SizedBox.shrink())),
         debugShowCheckedModeBanner: false,
         theme: ThemeData(
           fontFamily: 'Roboto',

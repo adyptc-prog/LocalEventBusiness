@@ -17,9 +17,14 @@ class BackupFormatTest {
         "flutter.leaderboard_history_v1" to "VGhpcyBpcyB0aGUgcHJlZml4IGZvciBhIGxpc3Qu![\"a\",\"b\"]",
         "flutter.some_flag" to true,
         "flutter.app_language_v1" to "en",
-        "flutter.install_activated_v1" to true,
+        "flutter.license_expiry_warned_on" to "2026-10-16",
         "flutter.menu_cart_v1" to "{}",
         "not_flutter_key" to "x",
+    )
+    private val identity = BackupFormat.Identity(
+        businessId = "localeventbusiness-1700000000000",
+        licenseJson = """{"payload":{"businessId":"localeventbusiness-1700000000000"},"signature":"x"}""",
+        trialStartMs = 1700000000000L,
     )
     private val photos = mapOf(
         "1700000000000-12.jpg" to byteArrayOf(-1, -40, -1, 0, 1, 2),
@@ -28,7 +33,7 @@ class BackupFormatTest {
 
     @Test
     fun `encode si decode pastreaza datele, tipurile si pozele`() {
-        val backup = BackupFormat.decode(BackupFormat.encode(prefs, photos, 1234L))
+        val backup = BackupFormat.decode(BackupFormat.encode(prefs, photos, identity, 1234L))
         assertEquals(1234L, backup.createdAt)
         assertEquals("""{"categories":[],"items":[],"currency":"lei"}""", backup.prefs["flutter.menu_store_v1"])
         assertEquals(12L, backup.prefs["flutter.table_count_v1"])
@@ -39,26 +44,50 @@ class BackupFormatTest {
 
     @Test
     fun `cheile care tin de telefon nu intra in backup`() {
-        val backup = BackupFormat.decode(BackupFormat.encode(prefs, photos, 0L))
+        val backup = BackupFormat.decode(BackupFormat.encode(prefs, photos, identity, 0L))
         assertFalse(backup.prefs.containsKey("flutter.app_language_v1"))
-        assertFalse(backup.prefs.containsKey("flutter.install_activated_v1"))
+        assertFalse(backup.prefs.containsKey("flutter.license_expiry_warned_on"))
         assertFalse(backup.prefs.containsKey("flutter.menu_cart_v1"))
         assertFalse(backup.prefs.containsKey("not_flutter_key"))
     }
 
     @Test
-    fun `restore pastreaza limba si activarea telefonului si sterge restul`() {
+    fun `restore pastreaza limba telefonului si sterge restul`() {
         val current = mapOf(
             "flutter.app_language_v1" to "ro",
-            "flutter.install_activated_v1" to true,
+            "flutter.license_expiry_warned_on" to "2026-10-16",
             "flutter.table_count_v1" to 3L,
             "flutter.only_on_this_phone" to "x",
         )
         val merged = BackupFormat.mergeForRestore(current, mapOf("flutter.table_count_v1" to 12L))
         assertEquals("ro", merged["flutter.app_language_v1"])
-        assertEquals(true, merged["flutter.install_activated_v1"])
+        assertEquals("2026-10-16", merged["flutter.license_expiry_warned_on"])
         assertEquals(12L, merged["flutter.table_count_v1"])
         assertNull(merged["flutter.only_on_this_phone"])
+    }
+
+    @Test
+    fun `codul de instalare si licenta trec prin backup`() {
+        val backup = BackupFormat.decode(BackupFormat.encode(prefs, photos, identity, 0L))
+        assertEquals(identity, backup.identity)
+    }
+
+    @Test
+    fun `un backup fara identitate (de dinainte de licenta) se citeste`() {
+        val root = JSONObject(BackupFormat.encode(prefs, photos, identity, 0L))
+        val data = JSONObject(root.getString("data"))
+        data.remove("identity")
+        val dataText = data.toString()
+        root.put("data", dataText).put("checksum", BackupFormat.sha256(dataText))
+        assertEquals(BackupFormat.Identity(null, null, null), BackupFormat.decode(root.toString()).identity)
+    }
+
+    @Test
+    fun `licenta activa de pe telefon nu e inlocuita de un backup fara licenta`() {
+        assertTrue(BackupFormat.shouldRestoreIdentity(currentLicenseActive = false, backupLicenseActive = false))
+        assertTrue(BackupFormat.shouldRestoreIdentity(currentLicenseActive = true, backupLicenseActive = true))
+        assertTrue(BackupFormat.shouldRestoreIdentity(currentLicenseActive = false, backupLicenseActive = true))
+        assertFalse(BackupFormat.shouldRestoreIdentity(currentLicenseActive = true, backupLicenseActive = false))
     }
 
     @Test
@@ -73,7 +102,7 @@ class BackupFormatTest {
 
     @Test
     fun `o poza cu nume periculos dintr-un fisier modificat e ignorata`() {
-        val root = JSONObject(BackupFormat.encode(prefs, photos, 0L))
+        val root = JSONObject(BackupFormat.encode(prefs, photos, identity, 0L))
         val data = JSONObject(root.getString("data"))
         data.getJSONObject("photos").put("../../evil", "AAAA")
         val dataText = data.toString()
@@ -85,7 +114,7 @@ class BackupFormatTest {
 
     @Test
     fun `checksum gresit e respins`() {
-        val root = JSONObject(BackupFormat.encode(prefs, photos, 0L))
+        val root = JSONObject(BackupFormat.encode(prefs, photos, identity, 0L))
         root.put("checksum", "0".repeat(64))
         assertThrows(BackupFormat.InvalidBackupException::class.java) {
             BackupFormat.decode(root.toString())

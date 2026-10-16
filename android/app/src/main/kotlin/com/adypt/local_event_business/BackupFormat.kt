@@ -19,8 +19,11 @@ import kotlin.io.encoding.Base64
  *     "formatVersion": 1,
  *     "createdAt": <epoch ms>,
  *     "checksum": sha256(data),
- *     "data": "<JSON ca text: {prefs: {...}, photos: {nume: base64}}>"
+ *     "data": "<JSON ca text: {prefs: {...}, photos: {nume: base64}, identity: {...}}>"
  *   }
+ *
+ * "identity" e codul de instalare și licența (LicenseStore), ca licența
+ * cumpărată să meargă și după reinstalare sau pe un telefon nou.
  *
  * "data" e păstrat ca text, nu ca obiect, ca checksum-ul să fie calculat pe
  * exact aceiași octeți la scriere și la citire (org.json nu garantează
@@ -42,8 +45,8 @@ object BackupFormat {
     private val EXCLUDED_KEYS = setOf(
         // Limba e a telefonului, nu a datelor: un backup restaurat nu o schimbă.
         "flutter.app_language_v1",
-        // Activarea e a telefonului (cine a instalat aplicația pe el).
-        "flutter.install_activated_v1",
+        // Avertizarea de expirare a licenței e afișată pe acest telefon.
+        "flutter.license_expiry_warned_on",
         // Coșul netrimis al unui client — nu are ce căuta într-un backup.
         "flutter.menu_cart_v1",
     )
@@ -59,10 +62,18 @@ object BackupFormat {
     fun isValidPhotoName(name: String): Boolean =
         PHOTO_NAME.matches(name) && !name.contains("..")
 
+    /** Identitatea de licență din backup: codul de instalare, licența, startul probei. */
+    data class Identity(
+        val businessId: String?,
+        val licenseJson: String?,
+        val trialStartMs: Long? = null,
+    )
+
     data class Backup(
         val createdAt: Long,
         val prefs: Map<String, Any?>,
         val photos: Map<String, ByteArray>,
+        val identity: Identity,
     )
 
     class InvalidBackupException(message: String) : Exception(message)
@@ -71,7 +82,7 @@ object BackupFormat {
         tr("Fișierul nu este un backup LocalEventBusiness.", "The file is not a LocalEventBusiness backup."),
     )
 
-    fun encode(prefs: Map<String, *>, photos: Map<String, ByteArray>, createdAt: Long): String {
+    fun encode(prefs: Map<String, *>, photos: Map<String, ByteArray>, identity: Identity, createdAt: Long): String {
         val prefsJson = JSONObject()
         for ((key, value) in prefs.toSortedMap()) {
             if (!isBackedUpKey(key)) continue
@@ -83,9 +94,15 @@ object BackupFormat {
             photosJson.put(name, Base64.encode(bytes))
         }
 
+        val identityJson = JSONObject()
+        identity.businessId?.let { identityJson.put("businessId", it) }
+        identity.licenseJson?.let { identityJson.put("license", it) }
+        identity.trialStartMs?.let { identityJson.put("trialStartMs", it) }
+
         val data = JSONObject()
             .put("prefs", prefsJson)
             .put("photos", photosJson)
+            .put("identity", identityJson)
             .toString()
 
         return JSONObject()
@@ -135,10 +152,17 @@ object BackupFormat {
                 throw InvalidBackupException(tr("Backup-ul este corupt (poză invalidă).", "The backup is corrupted (invalid photo)."))
             }
         }
+        // Backup-urile de dinainte de licență nu au identitate.
+        val identityJson = dataJson.optJSONObject("identity") ?: JSONObject()
         return Backup(
             createdAt = root.optLong("createdAt", 0L),
             prefs = prefs,
             photos = photos,
+            identity = Identity(
+                businessId = identityJson.optString("businessId").takeIf { it.isNotEmpty() },
+                licenseJson = identityJson.optString("license").takeIf { it.isNotEmpty() },
+                trialStartMs = if (identityJson.has("trialStartMs")) identityJson.optLong("trialStartMs") else null,
+            ),
         )
     }
 
@@ -157,6 +181,14 @@ object BackupFormat {
         }
         return result
     }
+
+    /**
+     * Codul de instalare din backup se restaurează (licența merge apoi mai
+     * departe), cu o excepție: nu pierdem o licență activă pe acest telefon
+     * în schimbul unei identități fără licență validă.
+     */
+    fun shouldRestoreIdentity(currentLicenseActive: Boolean, backupLicenseActive: Boolean): Boolean =
+        backupLicenseActive || !currentLicenseActive
 
     /** Backup-urile automate de șters, păstrând cele mai noi [keep]. */
     fun autoBackupsToDelete(names: List<String>, keep: Int): List<String> =

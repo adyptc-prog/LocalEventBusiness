@@ -111,7 +111,7 @@ object BackupManager {
             ?: emptyMap()
 
     fun snapshot(context: Context, now: Long = System.currentTimeMillis()): String =
-        BackupFormat.encode(flutterPrefs(context).all, readPhotos(context), now)
+        BackupFormat.encode(flutterPrefs(context).all, readPhotos(context), LicenseStore.identity(context), now)
 
     fun createBackup(context: Context, auto: Boolean): HashMap<String, Any?> {
         val treeUri = requireFolder(context)
@@ -283,6 +283,8 @@ object BackupManager {
         for ((name, bytes) in backup.photos) {
             File(dir, name).writeBytes(bytes)
         }
+
+        LicenseStore.restoreIdentity(context, backup.identity)
 
         // Telefon nou (fără parolă): parola cu care tocmai s-a deschis backup-ul
         // devine parola lui, ca backup-ul automat să continue.

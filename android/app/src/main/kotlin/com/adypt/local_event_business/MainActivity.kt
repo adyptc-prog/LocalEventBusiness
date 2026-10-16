@@ -11,13 +11,15 @@ import io.flutter.plugin.common.MethodChannel
 class MainActivity : FlutterActivity() {
 
     companion object {
-        private const val INSTALL_SOURCE_CHANNEL = "local_event_business/install_source"
+        private const val LICENSE_CHANNEL = "local_event_business/license"
         private const val BACKUP_CHANNEL = "local_event_business/backup"
+        private const val PICK_LICENSE_REQUEST_CODE = 8021
         private const val PICK_BACKUP_FOLDER_REQUEST_CODE = 8022
         private const val PICK_RESTORE_BACKUP_REQUEST_CODE = 8023
     }
 
-    // Backup: selectoarele de folder / fișier așteaptă rezultatul activității
+    // Licența și backup-ul: selectoarele de fișier / folder așteaptă rezultatul activității
+    private var pendingLicensePickResult: MethodChannel.Result? = null
     private var pendingBackupFolderResult: MethodChannel.Result? = null
     private var pendingBackupDestination: String = "phone"
     private var pendingRestoreResult: MethodChannel.Result? = null
@@ -27,6 +29,7 @@ class MainActivity : FlutterActivity() {
     override fun onActivityResult(requestCode: Int, resultCode: Int, data: Intent?) {
         super.onActivityResult(requestCode, resultCode, data)
         when (requestCode) {
+            PICK_LICENSE_REQUEST_CODE -> handleLicensePickResult(resultCode, data)
             PICK_BACKUP_FOLDER_REQUEST_CODE -> handleBackupFolderResult(resultCode, data)
             PICK_RESTORE_BACKUP_REQUEST_CODE -> handleRestoreResult(resultCode, data)
         }
@@ -37,18 +40,15 @@ class MainActivity : FlutterActivity() {
         AppLang.sync(applicationContext)
         LocalEventBackupWorker.schedule(applicationContext)
 
-        // Cine a instalat aplicația — citit de `InstallActivation` (Dart) la
-        // prima pornire, ca să decidă dacă telefonul e activat.
-        MethodChannel(flutterEngine.dartExecutor.binaryMessenger, INSTALL_SOURCE_CHANNEL)
+        // Licența și perioada de probă (vezi LicenseStore / lib/core/license_service.dart)
+        MethodChannel(flutterEngine.dartExecutor.binaryMessenger, LICENSE_CHANNEL)
             .setMethodCallHandler { call, result ->
-                if (call.method == "getInstallSource") {
-                    try {
-                        result.success(installSource())
-                    } catch (e: Exception) {
-                        result.error("install_source", e.message, null)
-                    }
-                } else {
-                    result.notImplemented()
+                AppLang.sync(applicationContext)
+                when (call.method) {
+                    "getBusinessId" -> result.success(LicenseStore.getOrCreateBusinessId(this))
+                    "checkLicense" -> result.success(LicenseStore.status(this))
+                    "pickLicenseFile" -> pickLicenseFile(result)
+                    else -> result.notImplemented()
                 }
             }
 
@@ -105,22 +105,36 @@ class MainActivity : FlutterActivity() {
             }
     }
 
-    private fun installSource(): Map<String, Any?> {
-        val sdk = Build.VERSION.SDK_INT
-        return if (sdk >= Build.VERSION_CODES.R) {
-            val info = packageManager.getInstallSourceInfo(packageName)
-            mapOf(
-                "installer" to info.installingPackageName,
-                "initiator" to info.initiatingPackageName,
-                "sdk" to sdk,
-            )
-        } else {
-            @Suppress("DEPRECATION")
-            mapOf(
-                "installer" to packageManager.getInstallerPackageName(packageName),
-                "initiator" to null,
-                "sdk" to sdk,
-            )
+    // ── Licență ──────────────────────────────────────────────────────────────────
+    private fun pickLicenseFile(result: MethodChannel.Result) {
+        if (pendingLicensePickResult != null) {
+            result.error("LICENSE_PICK_BUSY", tr("Un selector de licență este deja deschis.", "A license picker is already open."), null)
+            return
+        }
+        pendingLicensePickResult = result
+        val intent = Intent(Intent.ACTION_OPEN_DOCUMENT).apply {
+            addCategory(Intent.CATEGORY_OPENABLE)
+            type = "*/*"
+            addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
+        }
+        startActivityForResult(intent, PICK_LICENSE_REQUEST_CODE)
+    }
+
+    private fun handleLicensePickResult(resultCode: Int, data: Intent?) {
+        val result = pendingLicensePickResult ?: return
+        pendingLicensePickResult = null
+        val uri = data?.data
+        if (resultCode != RESULT_OK || uri == null) {
+            result.error("LICENSE_PICK_CANCELLED", tr("Nu a fost selectat niciun fișier de licență.", "No license file was selected."), null)
+            return
+        }
+        try {
+            val content = contentResolver.openInputStream(uri)?.use {
+                it.reader(Charsets.UTF_8).readText()
+            } ?: throw IllegalStateException(tr("Fișierul de licență nu a putut fi citit.", "Could not read the license file."))
+            result.success(LicenseStore.importLicense(this, content).toMap())
+        } catch (e: Exception) {
+            result.error("LICENSE_PICK_FAILED", e.message ?: e.toString(), null)
         }
     }
 

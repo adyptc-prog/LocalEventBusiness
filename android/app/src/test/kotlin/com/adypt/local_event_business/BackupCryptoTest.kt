@@ -15,6 +15,7 @@ class BackupCryptoTest {
     private val plain = BackupFormat.encode(
         mapOf("flutter.menu_store_v1" to """{"items":[{"name":"Ana Popescu Special","note":"0712345678"}]}"""),
         mapOf("1-1.jpg" to byteArrayOf(1, 2, 3)),
+        BackupFormat.Identity(businessId = "localeventbusiness-1", licenseJson = null),
         createdAt = 1000L,
     )
     // Puține iterații în teste — formatul și corectitudinea nu depind de număr.
