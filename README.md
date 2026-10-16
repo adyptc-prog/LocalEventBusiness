@@ -2,6 +2,8 @@
 
 Jocuri multiplayer, chat și comenzi la bar pe rețeaua Wi-Fi a unui local, fără internet.
 
+[![License: AGPL v3](https://img.shields.io/badge/License-AGPL_v3-blue.svg)](https://www.gnu.org/licenses/agpl-3.0)
+
 ## Arhitectură
 
 - **Telefonul-server** (Android, „Server local”) rulează `EventServerService` într-un
@@ -101,3 +103,24 @@ flutter test
 
 `test/support/` conține un canal WebSocket fals (`FakeChannel`) și utilitare care
 testează serverul complet în memorie, fără rețea.
+
+## Licență
+
+**LocalEventBusiness — jocuri, chat și comenzi la bar pe Wi-Fi-ul localului**<br>
+Copyright (C) 2026 Adrian Petcu — Volt Academy
+
+This program is free software: you can redistribute it and/or modify
+it under the terms of the GNU Affero General Public License as published
+by the Free Software Foundation, either version 3 of the License, or
+(at your option) any later version.
+
+This program is distributed in the hope that it will be useful,
+but WITHOUT ANY WARRANTY; without even the implied warranty of
+MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+GNU Affero General Public License for more details.
+
+Textul complet al **GNU Affero General Public License v3.0** e în [LICENSE](LICENSE).
+Codul e public, dar aplicația Android cere o licență de folosire după cele 30 de zile
+de probă (vezi secțiunea „Licență (doar aplicația Android)”).
+
+SPDX-License-Identifier: AGPL-3.0-or-later
