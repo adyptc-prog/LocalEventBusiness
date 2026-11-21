@@ -84,21 +84,37 @@ class _LobbyScreenState extends State<LobbyScreen> {
     final snap = _snapshot;
     if (_navigated || snap == null || snap['started'] != true) return;
     _navigated = true;
+    // Ecranul de joc înlocuiește lobby-ul (și PopScope-ul lui): fără învelișul
+    // de mai jos, butonul Înapoi al telefonului închidea ecranul fără să anunțe
+    // serverul, iar camera rămânea „în desfășurare” cu jucătorul încă atașat.
+    final onLeave = widget.onLeave;
+    var left = false;
+    void leaveOnce() {
+      if (left) return;
+      left = true;
+      onLeave();
+    }
+
     Navigator.of(context).pushReplacement(
       MaterialPageRoute(
-        builder: (context) => widget.definition.buildGameScreen(
-          context,
-          GameSessionArgs(
-            myId: widget.myId,
-            stateStream: widget.stateStream,
-            initialSnapshot: snap,
-            onAction: widget.onAction,
-            errorStream: widget.errorStream,
-            onLeave: widget.onLeave,
-            chatStream: widget.chatStream,
-            onChat: widget.onChat,
-            serverOrigin: widget.serverOrigin,
-            roomCode: widget.roomCode,
+        builder: (context) => PopScope(
+          onPopInvokedWithResult: (didPop, _) {
+            if (didPop) leaveOnce();
+          },
+          child: widget.definition.buildGameScreen(
+            context,
+            GameSessionArgs(
+              myId: widget.myId,
+              stateStream: widget.stateStream,
+              initialSnapshot: snap,
+              onAction: widget.onAction,
+              errorStream: widget.errorStream,
+              onLeave: leaveOnce,
+              chatStream: widget.chatStream,
+              onChat: widget.onChat,
+              serverOrigin: widget.serverOrigin,
+              roomCode: widget.roomCode,
+            ),
           ),
         ),
       ),
