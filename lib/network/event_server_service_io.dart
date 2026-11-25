@@ -344,7 +344,12 @@ class EventServerService {
     var path = request.uri.path;
     if (path.startsWith('/')) path = path.substring(1);
     if (path.isEmpty) path = 'index.html';
-    final bytes = webAssets[path];
+    // Service worker-ul Flutter ținea în cache clientul web vechi (pe
+    // telefonul-server, unde pagina e deschisă pe 127.0.0.1). În locul lui
+    // servim unul care golește cache-ul și se dezînregistrează.
+    final bytes = path == 'flutter_service_worker.js'
+        ? Uint8List.fromList(utf8.encode(kSelfRemovingServiceWorker))
+        : webAssets[path];
     if (bytes == null) {
       request.response.statusCode = HttpStatus.notFound;
       request.response.close();
@@ -755,3 +760,17 @@ class _ConnectionState {
     return true;
   }
 }
+
+/// Service worker care șterge cache-urile vechi și se dezînregistrează.
+/// Fără reîncărcare automată (Flutter îl reînregistrează la fiecare pornire,
+/// deci ar intra în buclă); următoarea deschidere ia clientul de la server.
+const kSelfRemovingServiceWorker = '''
+self.addEventListener('install', () => self.skipWaiting());
+self.addEventListener('activate', (event) => {
+  event.waitUntil((async () => {
+    const keys = await caches.keys();
+    await Promise.all(keys.map((k) => caches.delete(k)));
+    await self.registration.unregister();
+  })());
+});
+''';

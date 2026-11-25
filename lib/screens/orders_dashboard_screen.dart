@@ -167,10 +167,16 @@ class _OrdersDashboardScreenState extends State<OrdersDashboardScreen> {
             onPressed: () => Navigator.of(context).push(
               MaterialPageRoute(builder: (context) => const ClosedOrdersScreen()),
             ),
-            icon: Badge(
-              isLabelVisible: historyCount > 0,
-              label: Text('$historyCount'),
-              child: const Icon(Icons.history),
+            // Cititorul de ecran anunță „Istoric comenzi”, nu doar cifra din
+            // insignă.
+            icon: Semantics(
+              label: tr('orders.history.title'),
+              excludeSemantics: true,
+              child: Badge(
+                isLabelVisible: historyCount > 0,
+                label: Text('$historyCount'),
+                child: const Icon(Icons.history),
+              ),
             ),
           ),
           const LanguageButton(),

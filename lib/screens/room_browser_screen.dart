@@ -10,6 +10,7 @@ import '../network/event_server_runner.dart';
 import '../network/event_server_service.dart';
 import '../widgets/language_button.dart';
 import 'lobby_screen.dart';
+import '../core/event_session.dart';
 import '../l10n/tr.dart';
 
 /// Punctul unic de intrare într-un joc: conectare la serverul central al
@@ -63,6 +64,13 @@ class _RoomBrowserScreenState extends State<RoomBrowserScreen> {
         if (!mounted) return;
         setState(() => _servers = servers);
       });
+      // Venit din „Intră la eveniment”: serverul e deja ales.
+      final host = EventSession.host, port = EventSession.port;
+      if (host != null && port != null && _myName.isNotEmpty) {
+        WidgetsBinding.instance.addPostFrameCallback((_) {
+          if (mounted && !_connected && !_connecting) _connect(host, port);
+        });
+      }
       // Telefonul care rulează serverul se descoperă și pe el însuși prin
       // beacon-ul UDP, dar conectarea prin adresa de rețea, ricoșată de pe
       // router înapoi spre același telefon (hairpin NAT), e nesigură pe
@@ -447,7 +455,8 @@ class _RoomBrowserScreenState extends State<RoomBrowserScreen> {
           ),
         ),
         const SizedBox(height: 16),
-        _StepLabel(number: 3, text: tr('rooms.activeRooms', {'game': widget.definition.title})),
+        // Conectat: pasul cu serverul nu se mai vede, deci camerele sunt pasul 2.
+        _StepLabel(number: 2, text: tr('rooms.activeRooms', {'game': widget.definition.title})),
         const SizedBox(height: 8),
         Expanded(
           child: _rooms.isEmpty

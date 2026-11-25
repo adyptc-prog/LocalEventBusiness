@@ -13,7 +13,11 @@ String tr(String key, [Map<String, Object?> args = const {}]) =>
 /// Ca [tr], dar într-o limbă anume — folosit de server pentru textul de
 /// rezervă (în română) trimis clienților vechi, care nu știu de chei.
 String trIn(AppLanguage language, String key, [Map<String, Object?> args = const {}]) {
-  final entry = allStrings[key];
+  // Forma de singular („1 comandă”, nu „1 comenzi”): cheia `<cheie>.one`,
+  // folosită când numărul ({n} sau {days}) e 1.
+  final count = args['n'] ?? args['days'];
+  final singular = (count == 1 || count == '1') ? allStrings['$key.one'] : null;
+  final entry = singular ?? allStrings[key];
   if (entry == null) return key;
   var template = language == AppLanguage.en ? entry.$2 : entry.$1;
   if (args.isEmpty) return template;

@@ -13,6 +13,7 @@ import '../widgets/language_button.dart';
 import '../widgets/version_badge.dart';
 import 'lobby_screen.dart';
 import 'main_menu_screen.dart';
+import '../core/event_session.dart';
 import '../l10n/tr.dart';
 
 /// Punctul de intrare al clientului în activitatea „Meniu" — spre deosebire
@@ -48,10 +49,18 @@ class _MenuConnectScreenState extends State<MenuConnectScreen> {
     super.initState();
     _clientService = ClientService();
     if (kIsWeb) {
-      if (openedFromMenuQr(Uri.base)) {
+      // Din QR-ul de pe masă sau după „Intră la eveniment”: adresa e deja
+      // cunoscută, deci ne conectăm singuri.
+      if (openedFromMenuQr(Uri.base) || EventSession.host != null) {
         WidgetsBinding.instance.addPostFrameCallback((_) => _connectWebAddress());
       }
     } else {
+      final host = EventSession.host, port = EventSession.port;
+      if (host != null && port != null) {
+        WidgetsBinding.instance.addPostFrameCallback((_) {
+          if (mounted && !_connecting) _connect(host, port);
+        });
+      }
       _clientService.startDiscovery();
       _serversSub = _clientService.discoveredServers.listen((servers) {
         if (!mounted) return;

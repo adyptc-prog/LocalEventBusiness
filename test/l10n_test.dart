@@ -92,6 +92,14 @@ void main() {
       expect(tr('rooms.roomSubtitle', {'players': 2, 'max': 4, 'code': 'K7QX'}), '2/4 players · code K7QX');
     });
 
+    test('singular pentru n = 1: „1 comandă”, nu „1 comenzi”', () {
+      LanguageController.instance.debugSetLanguage(AppLanguage.ro);
+      expect(tr('orders.openTable.summary', {'n': 1, 'amount': '9 lei'}), '1 comandă · 9 lei');
+      expect(tr('orders.openTable.summary', {'n': 2, 'amount': '9 lei'}), '2 comenzi · 9 lei');
+      LanguageController.instance.debugSetLanguage(AppLanguage.en);
+      expect(tr('orders.openTable.summary', {'n': 1, 'amount': '9 lei'}), '1 order · 9 lei');
+    });
+
     test('o cheie necunoscută se afișează ca atare, fără excepție', () {
       expect(tr('nu.exista.deloc'), 'nu.exista.deloc');
     });

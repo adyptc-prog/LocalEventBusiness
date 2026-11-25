@@ -228,7 +228,7 @@ class _BackupScreenState extends State<BackupScreen> {
                 leading: Icon(b.auto ? Icons.schedule : Icons.save_outlined),
                 title: Text(_formatDate(b.modifiedAt)),
                 subtitle: Text(tr(b.auto ? 'backup.entry.auto' : 'backup.entry.manual',
-                    {'size': (b.size / (1024 * 1024)).toStringAsFixed(1)})),
+                    {'size': _formatSize(b.size)})),
               ),
             ),
         ],
@@ -399,4 +399,12 @@ class _BackupScreenState extends State<BackupScreen> {
       ),
     );
   }
+}
+
+/// „28 KB” / „1.4 MB” — sub 1 MB, „0.0 MB” nu spunea nimic.
+String _formatSize(int bytes) {
+  if (bytes < 1024 * 1024) {
+    return '${(bytes / 1024).ceil()} KB';
+  }
+  return '${(bytes / (1024 * 1024)).toStringAsFixed(1)} MB';
 }

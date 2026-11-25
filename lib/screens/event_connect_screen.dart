@@ -8,6 +8,7 @@ import '../network/event_server_service.dart';
 import '../widgets/language_button.dart';
 import '../widgets/version_badge.dart';
 import 'event_menu_screen.dart';
+import '../core/event_session.dart';
 import '../l10n/tr.dart';
 
 /// Primul pas al unui invitat: conectare la serverul central al
@@ -68,6 +69,7 @@ class _EventConnectScreenState extends State<EventConnectScreen> {
     });
     try {
       await _clientService.connect(host: host, port: port);
+      EventSession.remember(host, port);
       _clientService.stopDiscovery();
       final enabled = await _clientService.waitForActivities().timeout(const Duration(seconds: 5));
       await _clientService.disconnect();
